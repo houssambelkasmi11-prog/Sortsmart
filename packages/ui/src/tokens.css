@@ -1,0 +1,386 @@
+/* SORTÉ — Quiet Intelligence. Shared tokens + primitives for web and desktop. */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces — blue-black ink */
+  --bg-0: #050507;
+  --bg-1: #0a0b10;
+  --bg-2: #10121a;
+  --surface-1: #151823;
+  --surface-2: #1c2030;
+  --graphite: #252a3a;
+  --line: rgba(214, 222, 255, 0.07);
+  --line-strong: rgba(214, 222, 255, 0.15);
+
+  /* Type colours (names kept for compatibility) */
+  --ivory: #eef0f6;
+  --ivory-2: rgba(238, 240, 246, 0.64);
+  --ivory-3: rgba(238, 240, 246, 0.38);
+  --silver: #a9adbd;
+
+  /* Signature + semantic accents */
+  --acid: #c8ff3d;
+  --sage: #c8ff3d;
+  --sage-soft: rgba(200, 255, 61, 0.1);
+  --amber: #ffb547;
+  --amber-soft: rgba(255, 181, 71, 0.1);
+  --lavender: #9d8cff;
+  --lavender-soft: rgba(157, 140, 255, 0.12);
+  --danger: #ff6b5e;
+  --danger-soft: rgba(255, 107, 94, 0.1);
+  --iris: conic-gradient(from 210deg, #4ff0d2, #4f9dff, #9d8cff, #ff6bd5, #ffc56b, #c8ff3d, #4ff0d2);
+  --iris-linear: linear-gradient(100deg, #4ff0d2 0%, #4f9dff 25%, #9d8cff 50%, #ff6bd5 72%, #ffc56b 100%);
+
+  /* Material streams */
+  --cat-paper: #ffc56b;
+  --cat-plastic: #4f9dff;
+  --cat-glass: #4ff0d2;
+  --cat-organic: #ff8a5c;
+  --cat-residual: #8d90a3;
+
+  /* Type */
+  --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Unbounded Variable", "Geist Variable", -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.9375rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2.25rem;
+  --fs-3xl: clamp(2.25rem, 4.6vw, 3.75rem);
+  --fs-hero: clamp(3rem, 8vw, 7.5rem);
+  --tracking-tight: -0.03em;
+  --tracking-caps: 0.18em;
+
+  /* Space (4pt grid) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+  --s-10: 144px;
+
+  /* Radius */
+  --r-1: 6px;
+  --r-2: 10px;
+  --r-3: 18px;
+  --r-pill: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.6, 0, 0.3, 1);
+  --d-1: 120ms;
+  --d-2: 220ms;
+  --d-3: 480ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --d-1: 0ms;
+    --d-2: 0ms;
+    --d-3: 0ms;
+  }
+}
+:root[data-motion="reduced"] {
+  --d-1: 0ms;
+  --d-2: 0ms;
+  --d-3: 0ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--ivory);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 1.5px solid var(--ivory);
+  outline-offset: 3px;
+  border-radius: var(--r-1);
+}
+
+::selection {
+  background: rgba(200, 255, 61, 0.3);
+}
+
+.s-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ivory-3);
+  font-weight: 500;
+}
+
+.s-display {
+  font-family: var(--font-display);
+  font-weight: 300;
+  letter-spacing: var(--tracking-tight);
+  line-height: 1;
+}
+/* Iridescent text — the signature accent for emphasis */
+.s-display em,
+.s-iris {
+  font-style: normal;
+  background: var(--iris-linear);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.s-mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* Buttons */
+.s-btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--ivory);
+  --btn-line: var(--line-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  height: 40px;
+  padding: 0 var(--s-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font: 500 var(--fs-sm) / 1 var(--font-sans);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--d-2) var(--ease),
+    border-color var(--d-2) var(--ease),
+    transform var(--d-1) var(--ease),
+    filter var(--d-2) var(--ease);
+  white-space: nowrap;
+}
+.s-btn:hover {
+  border-color: rgba(214, 222, 255, 0.32);
+  background: rgba(214, 222, 255, 0.04);
+}
+.s-btn:active {
+  transform: scale(0.98);
+}
+.s-btn[disabled],
+.s-btn[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+.s-btn--primary {
+  --btn-bg: var(--acid);
+  --btn-fg: #07080a;
+  --btn-line: var(--acid);
+  font-weight: 600;
+}
+.s-btn--primary:hover {
+  background: var(--acid);
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 6px rgba(200, 255, 61, 0.1), 0 0 40px rgba(200, 255, 61, 0.25);
+}
+.s-btn--ghost {
+  --btn-line: transparent;
+}
+.s-btn--danger {
+  --btn-fg: var(--danger);
+  --btn-line: rgba(214, 139, 124, 0.3);
+}
+.s-btn--lg {
+  height: 48px;
+  padding: 0 var(--s-5);
+  font-size: var(--fs-md);
+}
+.s-btn--sm {
+  height: 30px;
+  padding: 0 var(--s-3);
+  font-size: var(--fs-xs);
+}
+
+/* Status pill */
+.s-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--ivory-2);
+  white-space: nowrap;
+}
+.s-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone, var(--ivory-3));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone, var(--ivory-3)) 18%, transparent);
+}
+.s-pill[data-tone="sage"] {
+  --tone: var(--sage);
+}
+.s-pill[data-tone="amber"] {
+  --tone: var(--amber);
+}
+.s-pill[data-tone="lavender"] {
+  --tone: var(--lavender);
+}
+.s-pill[data-tone="danger"] {
+  --tone: var(--danger);
+}
+.s-pill[data-pulse="true"] .s-pill__dot {
+  animation: s-pulse 1.6s var(--ease-in-out) infinite;
+}
+@keyframes s-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Orbital processing indicator — indeterminate, never a fake percentage */
+.s-orbit {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.s-orbit::before,
+.s-orbit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--orbit-color, var(--lavender));
+  opacity: 0.25;
+}
+.s-orbit::after {
+  border-color: transparent;
+  border-top-color: var(--orbit-color, var(--lavender));
+  opacity: 1;
+  animation: s-spin 0.9s linear infinite;
+}
+@keyframes s-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .s-orbit::after {
+    animation-duration: 2.4s;
+  }
+}
+
+/* Surfaces */
+.s-panel {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+}
+.s-rule {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+  margin: 0;
+}
+
+/* Form controls */
+.s-field {
+  display: grid;
+  gap: 6px;
+}
+.s-label {
+  font-size: var(--fs-xs);
+  color: var(--ivory-2);
+  font-weight: 500;
+}
+.s-hint {
+  font-size: var(--fs-xs);
+  color: var(--ivory-3);
+}
+.s-input,
+.s-select {
+  height: 38px;
+  width: 100%;
+  padding: 0 var(--s-3);
+  background: var(--bg-2);
+  color: var(--ivory);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-2);
+  font: 400 var(--fs-sm) var(--font-sans);
+  transition: border-color var(--d-2) var(--ease);
+}
+.s-input:focus,
+.s-select:focus {
+  outline: none;
+  border-color: rgba(214, 222, 255, 0.4);
+}
+.s-input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.s-switch {
+  appearance: none;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  background: var(--graphite);
+  border: 1px solid var(--line-strong);
+  position: relative;
+  cursor: pointer;
+  transition: background var(--d-2) var(--ease);
+  flex: none;
+  margin: 0;
+}
+.s-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ivory-2);
+  transition: transform var(--d-2) var(--ease), background var(--d-2) var(--ease);
+}
+.s-switch:checked {
+  background: rgba(163, 184, 157, 0.35);
+}
+.s-switch:checked::after {
+  transform: translateX(14px);
+  background: var(--ivory);
+}
+
+.s-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

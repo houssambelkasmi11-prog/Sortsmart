@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.toolchain/
+target/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.p8
+*.key
+.claude/
