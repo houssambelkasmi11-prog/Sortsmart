@@ -152,7 +152,7 @@ void main() {
           float rise = fract(uTime * (0.035 + r2 * 0.05) + r1);
           vec2 bc = vec2((r1 - 0.5) * 1.3 + sin(rise * 14.0 + r2 * 6.0) * 0.05, 1.0 - rise * (1.0 - front) * 1.0);
           vec2 bd = (lp - vec2(bc.x, front + (1.0 - front) * (1.0 - rise))) * lHalf;
-          float br = (1.2 + r2 * 3.2) * uDpr;
+          float br = (0.8 + r2 * 2.0) * uDpr * clamp(lHalf.x / (110.0 * uDpr), 0.5, 1.3);
           float ring = smoothstep(1.4 * uDpr, 0.0, abs(length(bd) - br));
           float spark = smoothstep(br * 0.5, 0.0, length(bd + vec2(br * 0.35, br * 0.35)));
           water += (ring * 0.2 + spark * 0.5) * smoothstep(1.0, 0.75, rise) * smoothstep(0.0, 0.06, rise);

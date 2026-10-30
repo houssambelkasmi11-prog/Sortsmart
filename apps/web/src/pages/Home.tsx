@@ -18,7 +18,7 @@ export function Home() {
       const p = clamp01(y / h);
       // Backlight peaks while the tubes are on screen, and again around the app preview.
       const glow = Math.max(0, 1 - Math.abs(y - h) / (h * 0.75));
-      field.setMood(clamp01((y - h * 0.3) / h) * 0.16, 1 - clamp01((y - h * 0.15) / (h * 0.9)) * 0.62, glow);
+      field.setMood(clamp01((y - h * 0.3) / h) * 0.16, 1 - clamp01((y - h * 0.15) / (h * 0.9)) * 0.62, glow, 1 - clamp01(p * 1.5));
       document.documentElement.style.setProperty("--hero-p", p.toFixed(3));
     };
     const onScroll = () => {
@@ -80,61 +80,8 @@ function useReveal() {
 }
 
 function Hero() {
-  const lens = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = lens.current;
-    if (!el) return;
-    const reduced = motionReduced();
-    let pointer: { x: number; y: number } | null = null;
-    let lastMove = -Infinity;
-    const place = (x: number, y: number) => {
-      el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
-    };
-    const rest = () => ({ x: window.innerWidth * (window.innerWidth < 760 ? 0.62 : 0.74), y: window.innerHeight * (window.innerWidth < 760 ? 0.28 : 0.36) });
-    let { x, y } = rest();
-    let vx = 0;
-    let vy = 0;
-    place(x, y);
-    if (reduced) return;
-    const onMove = (e: PointerEvent) => {
-      if (e.pointerType === "touch") return;
-      pointer = { x: e.clientX, y: e.clientY };
-      lastMove = performance.now();
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    let raf = 0;
-    let last = performance.now();
-    const loop = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      // Follows the pointer with weight; left alone, it drifts on its own.
-      const idle = now - lastMove > 2600;
-      const r = rest();
-      const tx = idle || !pointer ? r.x + Math.sin(now / 3100) * window.innerWidth * 0.09 : pointer.x;
-      const ty = idle || !pointer ? r.y + Math.sin(now / 2300 + 1) * window.innerHeight * 0.12 : pointer.y;
-      const k = idle ? 5 : 34;
-      vx += (tx - x) * k * dt;
-      vy += (ty - y) * k * dt;
-      const friction = Math.exp(-(idle ? 3.4 : 9) * dt);
-      vx *= friction;
-      vy *= friction;
-      x += vx * dt;
-      y += vy * dt;
-      place(x, y);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("pointermove", onMove);
-    };
-  }, []);
-
   return (
     <section className="hero">
-      <div className="lens-wrap">
-        <div className="lens" ref={lens} data-glass="clear" data-lens data-bevel="30" />
-      </div>
       <div className="hero__copy">
         <h1>
           <span>Waste,</span>
@@ -198,7 +145,7 @@ function Streams() {
               <span className="tube__liquid" />
             </span>
             <span className="tube__glyph">
-              <CategoryGlyph id={c.id} size={30} color="#fff" />
+              <CategoryGlyph id={c.id} size={22} color="#fff" />
             </span>
             <span className="tube__name">{c.short}</span>
           </div>

@@ -1,15 +1,14 @@
 import { COMPOSITE_FS, GlassCollector, createProgram } from "@sorte/ui";
 
 /**
- * The site's one idea, as a shader: the world is a muddy churn, and through the
- * lens the same flow resolves into five clean streams.
+ * The site's one idea, as a shader: a muddy churn that settles, as it moves
+ * across the hero, into five clean translucent streams.
  */
 const FIELD_FS = /* glsl */ `#version 300 es
 precision highp float;
 uniform vec2 uRes;
 uniform float uTime;
-uniform vec3 uLens;     // x, y (scene px), radius
-uniform float uLensOn;
+uniform float uRibbons; // 1 = hero ribbons fully out
 uniform float uOrder;   // 1 = the whole world is sorted
 uniform float uDim;
 uniform float uGlow;    // soft backlight, so glass and water have something to bend
@@ -48,7 +47,7 @@ vec3 mess(vec2 p) {
   return col;
 }
 
-// The same matter, sorted: exactly five laminar ribbons across the lens, each with its own sheen.
+// The same matter, sorted: exactly five laminar ribbons, each with its own sheen.
 vec3 sorted(vec2 p, float span) {
   float t = uTime * 0.16;
   float y = p.y / span + 0.5
@@ -67,21 +66,29 @@ vec3 sorted(vec2 p, float span) {
 }
 
 void main() {
-  vec2 px = gl_FragCoord.xy;
-  vec2 p = (px - 0.5 * uRes) / uRes.y;
-  float d = length(px - uLens.xy);
-  float inLens = smoothstep(uLens.z, uLens.z - 10.0, d) * uLensOn;
-  float order = max(inLens, uOrder);
-  // Streams sit inside the lens; once it fades, they relax into broad bands across the page.
-  vec2 lensP = (uLens.xy - 0.5 * uRes) / uRes.y * uLensOn;
-  float span = mix(1.25, uLens.z * 2.0 / uRes.y, uLensOn);
+  vec2 p = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+  float aspect = uRes.x / uRes.y;
+
+  // Where the ribbons exist: they condense out of the smoke, left to right, with an uneven front.
+  float front = fbm(vec2(p.y * 2.2 + 3.0, uTime * 0.03)) - 0.5;
+  float across = smoothstep(-0.02 * aspect, 0.38 * aspect, p.x + front * 0.5);
+  float cy = 0.13;
+  float span = 0.5;
+  float within = smoothstep(0.5, 0.42, abs((p.y - cy) / span));
+  float hero = across * within * uRibbons;
+
   // Ribbons are translucent: the churn stays visible through them, bent by their shape.
-  vec2 q = p - lensP;
-  vec2 bend = vec2(sin(q.y / span * 15.7) * 0.03, cos(q.x / span * 5.0 + uTime * 0.2) * 0.02) * order;
+  vec2 q = vec2(p.x, p.y - cy);
+  vec2 bend = vec2(sin(q.y / span * 15.7) * 0.035, cos(q.x * 2.4 + uTime * 0.2) * 0.022) * hero;
   vec3 world = mess((p + bend) * 1.5);
   vec3 ribbons = sorted(q, span);
-  vec3 col = mix(world, world * 1.6 + ribbons * 0.72, order);
-  col *= mix(uDim, 1.0, inLens);
+  vec3 col = mix(world, world * 1.7 + ribbons * 0.8, hero);
+
+  // Further down the page, the same order fades in faintly across everything.
+  vec3 broad = sorted(p, 1.25);
+  col = mix(col, world * 1.6 + broad * 0.72, uOrder * (1.0 - hero));
+
+  col *= mix(uDim, 1.0, hero);
   float pool = exp(-pow(p.y + 0.06, 2.0) * 4.5);
   col += uGlow * pool * (world * 1.25 + vec3(0.03, 0.033, 0.04));
   frag = vec4(col, 1.0);
@@ -117,6 +124,8 @@ class Field {
   private dimTarget = 1;
   private glow = 0;
   private glowTarget = 0;
+  private ribbons = 0;
+  private ribbonsTarget = 0;
   reduced = false;
 
   attach(canvas: HTMLCanvasElement) {
@@ -154,10 +163,11 @@ class Field {
   }
 
   /** How sorted the world is (0-1) and how bright, usually driven by scroll. */
-  setMood(order: number, dim: number, glow = 0) {
+  setMood(order: number, dim: number, glow = 0, ribbons = 0) {
     this.orderTarget = order;
     this.dimTarget = dim;
     this.glowTarget = glow;
+    this.ribbonsTarget = ribbons;
   }
 
   private onLost = (e: Event) => {
@@ -225,22 +235,9 @@ class Field {
     this.order = damp(this.order, this.orderTarget, 3, dt);
     this.dim = damp(this.dim, this.dimTarget, 3, dt);
     this.glow = damp(this.glow, this.glowTarget, 3, dt);
+    this.ribbons = damp(this.ribbons, this.ribbonsTarget, 1.4, dt);
 
     const sc = this.scene;
-    const scale = this.sw / window.innerWidth;
-    const lens = document.querySelector<HTMLElement>("[data-lens]");
-    let lx = -9999;
-    let ly = -9999;
-    let lr = 0;
-    let lensOn = 0;
-    if (lens) {
-      const r = lens.getBoundingClientRect();
-      lx = (r.left + r.width / 2) * scale;
-      ly = this.sh - (r.top + r.height / 2) * scale;
-      lr = (r.width / 2) * scale;
-      lensOn = parseFloat(getComputedStyle(lens).opacity);
-    }
-
     gl.bindVertexArray(this.vao);
     gl.disable(gl.BLEND);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
@@ -248,8 +245,7 @@ class Field {
     gl.useProgram(sc.p);
     gl.uniform2f(sc.u("uRes"), this.sw, this.sh);
     gl.uniform1f(sc.u("uTime"), this.time);
-    gl.uniform3f(sc.u("uLens"), lx, ly, lr);
-    gl.uniform1f(sc.u("uLensOn"), lensOn);
+    gl.uniform1f(sc.u("uRibbons"), this.ribbons);
     gl.uniform1f(sc.u("uOrder"), this.order);
     gl.uniform1f(sc.u("uDim"), this.dim);
     gl.uniform1f(sc.u("uGlow"), this.glow);
