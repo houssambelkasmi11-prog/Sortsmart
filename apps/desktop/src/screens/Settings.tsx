@@ -54,6 +54,32 @@ export function Settings() {
         </div>
       </Section>
 
+      <Section title="Live camera">
+        <div className="toggle-row">
+          <div>
+            <p className="s-label">Classify automatically</p>
+            <p className="s-hint">When a new item holds still. Motion is checked on this device.</p>
+          </div>
+          <input type="checkbox" className="s-switch" checked={settings.live.autoScan} aria-label="Classify automatically" onChange={(e) => updateSettings((s) => ({ ...s, live: { ...s.live, autoScan: e.target.checked } }))} />
+        </div>
+        <div className="toggle-row">
+          <div>
+            <p className="s-label">Open the camera on launch</p>
+            <p className="s-hint">It only runs on the Live screen.</p>
+          </div>
+          <input type="checkbox" className="s-switch" checked={settings.live.autoStart} aria-label="Open camera on launch" onChange={(e) => updateSettings((s) => ({ ...s, live: { ...s.live, autoStart: e.target.checked } }))} />
+        </div>
+        <div className="toggle-row">
+          <div>
+            <p className="s-label">Auto-send to cloud</p>
+            <p className="s-hint">{settings.live.cloudAcknowledgedAt ? `Allowed ${new Date(settings.live.cloudAcknowledgedAt).toLocaleDateString()}.` : "Asked the first time you use Auto with a cloud provider."}</p>
+          </div>
+          <Button size="sm" disabled={!settings.live.cloudAcknowledgedAt} onClick={() => updateSettings((s) => ({ ...s, live: { ...s.live, cloudAcknowledgedAt: null } }))}>
+            Revoke
+          </Button>
+        </div>
+      </Section>
+
       <Section title="Classification">
         <Field label={`Confidence threshold · ${Math.round(settings.confidenceThreshold * 100)}%`} hint="Below this, you decide.">
           <input

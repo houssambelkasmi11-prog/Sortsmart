@@ -61,6 +61,16 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri -> target
 
+      - name: Check update signing key
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::Repository secret TAURI_SIGNING_PRIVATE_KEY is missing. Add the contents of ~/.tauri/sorte.key under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
       - run: npm ci
       - run: npm test
       - run: npm run typecheck

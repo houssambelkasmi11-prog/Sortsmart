@@ -21,7 +21,7 @@ import { readStore, transport, writeStore } from "../platform";
 import { checkForUpdate, describeUpdateError, downloadUpdate, type UpdateState } from "../platform/updates";
 import type { Update } from "@tauri-apps/plugin-updater";
 
-export type Screen = "overview" | "sort" | "providers" | "local" | "devices" | "history" | "settings";
+export type Screen = "live" | "overview" | "providers" | "local" | "devices" | "history" | "settings";
 
 interface AppState {
   ready: boolean;
@@ -62,7 +62,7 @@ export function useApp(): AppState {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [screen, setScreen] = useState<Screen>("overview");
+  const [screen, setScreen] = useState<Screen>("live");
   const [settings, setSettings] = useState<ApplicationSettings>(defaultSettings);
   const [history, setHistory] = useState<ClassificationRecord[]>([]);
   const [notices, setNotices] = useState<string[]>([]);

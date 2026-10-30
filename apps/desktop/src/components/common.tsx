@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 export function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
-    <section className="card">
+    <section className="card" data-glass="frost">
       <header className="card__head">
         <h2 className="s-eyebrow">{title}</h2>
         {aside}
@@ -40,23 +40,6 @@ export function CategoryTag({ id }: { id: CategoryId | null }) {
 export function LocationTag({ r }: { r: Pick<ClassificationResult, "location" | "inference"> }) {
   if (r.inference === "mock") return <StatusPill>Demo · simulated</StatusPill>;
   return r.location === "cloud" ? <StatusPill tone="lavender">Cloud</StatusPill> : <StatusPill tone="sage">Local</StatusPill>;
-}
-
-/** Confidence bar with threshold marker. Labelled as model-reported, not calibrated. */
-export function Confidence({ value, threshold }: { value: number; threshold: number }) {
-  const below = value < threshold;
-  return (
-    <div className="confidence">
-      <div className="confidence__row">
-        <span className="s-mono">{Math.round(value * 100)}%</span>
-        <span className="s-hint">model-reported · threshold {Math.round(threshold * 100)}%</span>
-      </div>
-      <div className="confidence__track" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} aria-label="Model-reported confidence">
-        <div className="confidence__fill" data-below={below} style={{ width: `${value * 100}%` }} />
-        <div className="confidence__mark" style={{ left: `${threshold * 100}%` }} />
-      </div>
-    </div>
-  );
 }
 
 export function Dialog({ open, title, children, onClose }: { open: boolean; title: string; children: ReactNode; onClose(): void }) {

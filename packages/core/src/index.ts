@@ -9,6 +9,7 @@ export * from "./transport";
 export * from "./image";
 export * from "./engine";
 export * from "./settings";
+export * from "./live";
 export * from "./providers/types";
 export * from "./providers/registry";
 export { MockProvider, MOCK_PROVIDER_ID, MOCK_MODEL, MOCK_SCENARIOS, createMockConfig } from "./providers/mock";

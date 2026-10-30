@@ -19,7 +19,7 @@ export function UpdateBanner() {
   if (update.kind === "available") {
     const u = update.update;
     return (
-      <div className="update" role="status">
+      <div className="update" data-glass="frost" role="status">
         <span className="update__dot" />
         <span>
           SORTÉ <strong>{u.version}</strong> is available
@@ -33,7 +33,7 @@ export function UpdateBanner() {
   if (update.kind === "downloading") {
     const pct = update.total ? Math.min(100, Math.round((update.received / update.total) * 100)) : null;
     return (
-      <div className="update" role="status">
+      <div className="update" data-glass="frost" role="status">
         <span className="update__dot update__dot--busy" />
         <span>Downloading {update.version}</span>
         <span className="update__bar" data-indeterminate={pct === null}>
@@ -46,7 +46,7 @@ export function UpdateBanner() {
   if (update.kind === "ready") {
     const u = update.update;
     return (
-      <div className="update" role="status">
+      <div className="update" data-glass="frost" role="status">
         <span className="update__dot" />
         <span>
           SORTÉ <strong>{u.version}</strong> is ready

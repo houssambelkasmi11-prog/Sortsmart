@@ -114,6 +114,18 @@ export const ApplicationSettingsSchema = z.object({
     .default({}),
   rules: RulesProfileSchema,
   imageMaxEdge: z.number().int().min(256).max(2048).default(1024),
+  live: z
+    .object({
+      /** Classify automatically when an item settles in view. */
+      autoScan: z.boolean().default(true),
+      /** Open the camera on launch. Only set after the user has started it once. */
+      autoStart: z.boolean().default(false),
+      mirror: z.boolean().default(true),
+      cameraId: z.string().max(300).nullable().default(null),
+      /** Set after the user accepts that auto-scan sends images to a cloud provider. */
+      cloudAcknowledgedAt: z.string().nullable().default(null),
+    })
+    .default({}),
   updates: z.object({ autoCheck: z.boolean().default(true), autoDownload: z.boolean().default(true) }).default({}),
   reducedMotion: z.enum(["system", "on", "off"]).default("system"),
 });

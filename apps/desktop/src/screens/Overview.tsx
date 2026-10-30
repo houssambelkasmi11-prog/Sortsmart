@@ -21,7 +21,7 @@ export function Overview() {
 
   return (
     <div className="overview">
-      <div className="hud">
+      <div className="hud" data-glass="frost">
         <button className="orb" data-mode={settings.mode} onClick={() => go("settings")} title={mode.description}>
           <span className="orb__ring" />
           <span className="orb__core" />
@@ -64,8 +64,8 @@ export function Overview() {
         </div>
       )}
 
-      <button className="cta" onClick={() => go("sort")}>
-        Sort an item
+      <button className="pill pill--primary pill--lg cta" data-glass="clear" onClick={() => go("live")}>
+        Open camera
       </button>
     </div>
   );

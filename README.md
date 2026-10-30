@@ -32,6 +32,14 @@ npm run tauri build      # installers for this OS → apps/desktop/src-tauri/tar
 - **Devices** (`packages/core/src/device`): transport-independent `SortingDevice`. Only a labelled simulator exists; commands require a review-free result or a person's decision. Accepted, acknowledged and physically verified are reported separately.
 - **Security boundary**: the desktop webview has a strict CSP and no network access. All HTTP goes through Rust (`src-tauri/src/http.rs`), which validates URLs/headers, follows no redirects, and attaches keys from the OS credential store only to the origin they were saved for. The UI only ever sees the last 4 key characters. The website has no keys and no provider access.
 
+## Live camera and liquid glass
+
+The app opens on **Live** (`apps/desktop/src/screens/Live.tsx`): the camera fills the window and glass controls float on top.
+
+- **When a model runs:** `packages/core/src/live.ts` compares small grayscale frames on the device. It learns the empty scene, waits for an item to hold still, and triggers one classification per item. Nothing is sent while the picture moves, and the shutter always works manually. Auto with a cloud provider asks for permission first, and the session budget still applies.
+- **Privacy:** the camera only runs on the Live screen. Frames aren't stored; history keeps results and a hash.
+- **Glass:** `apps/desktop/src/gl` renders the background shader and camera, then refracts them through every `[data-glass]` element using a signed distance field, so panels really bend the picture and melt together. Without WebGL2 the app falls back to a CSS blur. Quality drops automatically on slow GPUs.
+
 ## Releases & auto-update
 
 Every push to `main` that touches the app builds and publishes a new release automatically
@@ -60,5 +68,6 @@ Local signed build: `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/sorte.key)" npm r
 
 - No physical device adapter yet — waiting for the hardware protocol.
 - Model confidence is self-reported, not calibrated; corrections in History are the data to calibrate with.
-- Windows build is configured but not yet built or tested on Windows.
+- Windows build has not been run on real Windows hardware.
+- The live camera has only been tested with a simulated video stream, not a physical camera inside the packaged app.
 - No formal security audit.
