@@ -239,7 +239,7 @@ main,
   position: absolute;
   top: 0;
   left: 0;
-  width: clamp(240px, 32vw, 460px);
+  width: clamp(120px, 15vw, 210px);
   aspect-ratio: 1;
   border-radius: 50%;
   will-change: transform;
@@ -347,6 +347,11 @@ main,
 .tube:hover,
 .tube:focus-visible {
   transform: translateY(-12px);
+}
+/* With WebGL the water is drawn by the shader; this is only the fallback. */
+.has-gl .tube__clip,
+.has-gl .win__tube u {
+  display: none;
 }
 .tube__clip {
   position: absolute;

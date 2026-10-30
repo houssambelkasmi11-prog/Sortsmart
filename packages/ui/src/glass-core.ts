@@ -25,6 +25,9 @@ uniform int uCount;
 uniform vec4 uRect[MAX_RECTS];
 uniform vec4 uMeta[MAX_RECTS];
 uniform vec2 uMouse;
+uniform float uTime;
+uniform vec4 uLiquid[MAX_RECTS]; // rgb colour, a fill level (0-1)
+uniform float uSlosh[MAX_RECTS];
 out vec4 frag;
 
 vec3 sdRoundBox(vec2 p, vec2 b, float r) {
@@ -58,6 +61,10 @@ void main() {
   float alpha = 0.0;
   float bevelWidth = 20.0 * uDpr;
   float k = 12.0 * uDpr;
+  float hasLiquid = 0.0;
+  vec2 lp = vec2(0.0), lHalf = vec2(1.0);
+  vec3 lColor = vec3(0.0);
+  float lLevel = 0.0, lSlosh = 0.0, lSeed = 0.0;
   for (int i = 0; i < uCount; i++) {
     vec3 box = sdRoundBox(p - uRect[i].xy, uRect[i].zw, uMeta[i].x);
     float h = clamp(0.5 + 0.5 * (d - box.x) / k, 0.0, 1.0);
@@ -66,6 +73,15 @@ void main() {
     frost = mix(frost, uMeta[i].z, h);
     alpha = mix(alpha, uMeta[i].y, h);
     bevelWidth = mix(bevelWidth, uMeta[i].w, h);
+    if (box.x < 0.0 && uLiquid[i].a > 0.001) {
+      hasLiquid = 1.0;
+      lHalf = uRect[i].zw;
+      lp = (p - uRect[i].xy) / lHalf;
+      lColor = uLiquid[i].rgb;
+      lLevel = uLiquid[i].a;
+      lSlosh = uSlosh[i];
+      lSeed = float(i);
+    }
   }
 
   // Soft contact shadow around the glass.
@@ -87,6 +103,73 @@ void main() {
     glass = mix(glass * 1.06 + 0.035, glass * 0.42 + 0.03, frost);
     // Tame bright pictures so white text and icons hold up on clear glass too.
     glass *= 1.0 - 0.5 * smoothstep(0.45, 1.0, luma);
+
+    // Water in a glass tube. lp runs -1..1 across the tube, y downward.
+    if (hasLiquid > 0.5) {
+      float x = clamp(lp.x, -1.0, 1.0);
+      float curve = sqrt(max(1.0 - x * x, 0.0));
+      float wave = sin(x * 2.6 + uTime * 1.5 + lSeed * 1.7) * (0.006 + lSlosh * 0.05)
+        + sin(x * 6.3 - uTime * 2.1 + lSeed) * (0.002 + lSlosh * 0.02);
+      float surfaceY = 1.0 - 2.0 * lLevel + wave;
+      // The surface is a disc seen slightly from above: back and front edges of an ellipse.
+      float ell = (lHalf.x / lHalf.y) * 0.13;
+      float front = surfaceY + ell * curve;
+      float back = surfaceY - ell * curve;
+      float aa = 1.6 / lHalf.y;
+      // The glass has thickness: water stops short of the outer wall.
+      float wall = smoothstep(3.0 * uDpr, 6.0 * uDpr, -d);
+      float body = smoothstep(front - aa, front + aa, lp.y) * wall;
+      float disc = smoothstep(back - aa, back + aa, lp.y) * (1.0 - smoothstep(front - aa, front + aa, lp.y)) * wall;
+      if (body + disc > 0.001) {
+        float depth = max(lp.y - front, 0.0) * 0.5;
+        // A water-filled cylinder is a strong lens: it flips and stretches what's behind it.
+        vec2 bend = vec2(-x * lHalf.x * 1.85, sin(lp.y * 9.0 + uTime * 0.9 + lSeed) * 3.0 * uDpr) / uRes;
+        vec3 behind = vec3(
+          textureLod(uScene, uv + bend, 1.2).r,
+          textureLod(uScene, uv + bend * 1.06, 1.2).g,
+          textureLod(uScene, uv + bend * 1.12, 1.2).b
+        );
+        // Light through the water: colour by absorption, stronger through longer paths.
+        vec3 absorb = (1.0 - lColor) * 2.4 + 0.1;
+        vec3 transmit = exp(-absorb * (0.3 + curve * 0.75) * (0.55 + depth * 1.3));
+        // Light scattered inside: brightest under the surface, falling off with depth.
+        vec3 scatter = lColor * (0.03 + 0.2 * exp(-depth * 3.2)) * (0.5 + 0.5 * curve);
+        // Caustics: faint, irregular light, only just below the surface.
+        vec2 cp = vec2(lp.x * 3.1 + lSeed * 2.3, lp.y * 6.0 * lHalf.y / lHalf.x * 0.3 - uTime * 0.13);
+        cp += 0.7 * vec2(sin(cp.y * 2.3 + uTime * 0.4), sin(cp.x * 1.9 - uTime * 0.31));
+        cp += 0.35 * vec2(sin(cp.y * 4.7 - uTime * 0.27), sin(cp.x * 5.3 + uTime * 0.23));
+        float caustic = pow(max(1.0 - abs(sin(cp.x * 2.1) + sin(cp.y * 2.7)) * 0.9, 0.0), 7.0);
+        vec3 water = behind * transmit * 2.0 + scatter
+          + mix(lColor, vec3(1.0), 0.5) * caustic * 0.06 * exp(-depth * 5.5) * curve;
+        // Roll off highlights like a camera, so nothing burns out.
+        water = 1.0 - exp(-water * 1.35);
+
+        // A few rising bubbles.
+        for (int j = 0; j < 5; j++) {
+          float fj = float(j);
+          float r1 = fract(sin((fj + lSeed * 3.1) * 12.9898) * 43758.5453);
+          float r2 = fract(sin((fj + lSeed * 3.1) * 78.233) * 12543.123);
+          float rise = fract(uTime * (0.035 + r2 * 0.05) + r1);
+          vec2 bc = vec2((r1 - 0.5) * 1.3 + sin(rise * 14.0 + r2 * 6.0) * 0.05, 1.0 - rise * (1.0 - front) * 1.0);
+          vec2 bd = (lp - vec2(bc.x, front + (1.0 - front) * (1.0 - rise))) * lHalf;
+          float br = (1.2 + r2 * 3.2) * uDpr;
+          float ring = smoothstep(1.4 * uDpr, 0.0, abs(length(bd) - br));
+          float spark = smoothstep(br * 0.5, 0.0, length(bd + vec2(br * 0.35, br * 0.35)));
+          water += (ring * 0.2 + spark * 0.5) * smoothstep(1.0, 0.75, rise) * smoothstep(0.0, 0.06, rise);
+        }
+
+        // The disc catches the sky; the front edge is a bright meniscus line.
+        float across = clamp((lp.y - back) / max(front - back, 0.001), 0.0, 1.0);
+        vec3 discCol = water * 0.75 + mix(lColor, vec3(1.0), 0.6) * (0.12 + 0.3 * across);
+        vec3 inner = mix(water, discCol, disc);
+        inner += exp(-abs(lp.y - front) * lHalf.y / (1.5 * uDpr)) * 0.5 * mix(lColor, vec3(1.0), 0.75) * curve;
+        // Round the column: dark at the sides, one long soft highlight.
+        inner *= mix(1.0, 0.58, pow(abs(x), 5.0));
+        inner += body * exp(-pow((x + 0.56) / 0.075, 2.0)) * 0.16;
+        inner += body * exp(-pow((x - 0.68) / 0.03, 2.0)) * 0.06;
+        glass = mix(glass, inner, body + disc);
+      }
+    }
 
     vec2 light = normalize(vec2(-0.45, -0.9));
     float rim = smoothstep(2.4 * uDpr, 0.0, -d);
@@ -138,9 +221,46 @@ export function createProgram(gl: WebGL2RenderingContext, fragment: string) {
 export class GlassCollector {
   readonly rects = new Float32Array(MAX_GLASS_RECTS * 4);
   readonly meta = new Float32Array(MAX_GLASS_RECTS * 4);
+  readonly liquid = new Float32Array(MAX_GLASS_RECTS * 4);
+  readonly slosh = new Float32Array(MAX_GLASS_RECTS);
+  private levels = new WeakMap<Element, { y: number; v: number }>();
+  private colors = new Map<string, [number, number, number]>();
   private radii = new WeakMap<Element, string>();
 
-  collect(dpr: number): number {
+  private color(value: string): [number, number, number] {
+    let c = this.colors.get(value);
+    if (!c) {
+      const name = value.match(/var\((--[^)]+)\)/)?.[1];
+      const hex = (name ? getComputedStyle(document.documentElement).getPropertyValue(name) : value).trim();
+      const m = hex.match(/^#([0-9a-f]{6})$/i);
+      const v = m ? parseInt(m[1]!, 16) : 0xffffff;
+      c = [(v >> 16) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255];
+      this.colors.set(value, c);
+    }
+    return c;
+  }
+
+  /** data-liquid (colour) and data-level (0-1) fill a tube; the level moves like a spring, so it sloshes. */
+  private water(el: HTMLElement, n: number, dt: number) {
+    if (!el.dataset.liquid) {
+      this.liquid.set([0, 0, 0, 0], n * 4);
+      this.slosh[n] = 0;
+      return;
+    }
+    const target = Math.max(0, Math.min(1, Number(el.dataset.level) || 0));
+    let s = this.levels.get(el);
+    if (!s) {
+      s = { y: 0, v: 0 };
+      this.levels.set(el, s);
+    }
+    s.v += (target - s.y) * 16 * dt;
+    s.v *= Math.exp(-3.2 * dt);
+    s.y += s.v * dt;
+    this.liquid.set([...this.color(el.dataset.liquid), Math.max(0, s.y)], n * 4);
+    this.slosh[n] = Math.min(1, Math.abs(s.v) * 1.4);
+  }
+
+  collect(dpr: number, dt = 0.016): number {
     let n = 0;
     for (const el of document.querySelectorAll<HTMLElement>("[data-glass]")) {
       if (n >= MAX_GLASS_RECTS) break;
@@ -161,6 +281,7 @@ export class GlassCollector {
       if (alpha < 0.01) continue;
       this.rects.set([(r.left + r.width / 2) * dpr, (r.top + r.height / 2) * dpr, hw, hh], n * 4);
       this.meta.set([Math.min(radius * dpr, hw, hh), alpha, el.dataset.glass === "frost" ? 1 : 0, (Number(el.dataset.bevel) || 20) * dpr], n * 4);
+      this.water(el, n, dt);
       n++;
     }
     return n;

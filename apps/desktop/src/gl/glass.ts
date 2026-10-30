@@ -247,7 +247,7 @@ class GlassRenderer {
     gl.generateMipmap(gl.TEXTURE_2D);
 
     // Composite pass: the glass itself.
-    const n = this.collector.collect(this.dpr);
+    const n = this.collector.collect(this.dpr, dt);
     const co = this.composite;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.w, this.h);
@@ -258,6 +258,9 @@ class GlassRenderer {
     gl.uniform1i(co.u("uCount"), n);
     gl.uniform4fv(co.u("uRect"), this.collector.rects);
     gl.uniform4fv(co.u("uMeta"), this.collector.meta);
+    gl.uniform4fv(co.u("uLiquid"), this.collector.liquid);
+    gl.uniform1fv(co.u("uSlosh"), this.collector.slosh);
+    gl.uniform1f(co.u("uTime"), this.time);
     gl.uniform2f(co.u("uMouse"), this.mouse[0] * this.dpr, this.mouse[1] * this.dpr);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }

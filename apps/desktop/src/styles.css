@@ -940,6 +940,10 @@ button.chute:not(:disabled):active {
 .chute[data-active="true"] {
   transform: translateY(-6px) scale(1.05);
 }
+/* With WebGL the water is drawn by the shader; this is only the fallback. */
+.has-gl .chute__clip {
+  display: none;
+}
 .chute__clip {
   position: absolute;
   inset: 3px;

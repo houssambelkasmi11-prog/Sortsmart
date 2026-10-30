@@ -12,6 +12,7 @@ uniform vec3 uLens;     // x, y (scene px), radius
 uniform float uLensOn;
 uniform float uOrder;   // 1 = the whole world is sorted
 uniform float uDim;
+uniform float uGlow;    // soft backlight, so glass and water have something to bend
 out vec4 frag;
 
 const vec3 STREAMS[5] = vec3[5](
@@ -59,7 +60,7 @@ vec3 sorted(vec2 p, float span) {
   int i = int(mod(id, 5.0) + 5.0) % 5;
   vec3 col = STREAMS[i];
   float round = sin(f * 3.14159);
-  col *= 0.16 + 0.98 * pow(round, 0.8);
+  col *= 0.1 + 0.95 * pow(round, 1.1);
   float sheen = 0.5 + 0.5 * sin(p.x * 5.0 / span - uTime * 0.5 + id * 1.9);
   col += mix(col, vec3(1.0), 0.45) * pow(round, 30.0) * (0.1 + 0.5 * sheen * sheen);
   return col;
@@ -74,8 +75,15 @@ void main() {
   // Streams sit inside the lens; once it fades, they relax into broad bands across the page.
   vec2 lensP = (uLens.xy - 0.5 * uRes) / uRes.y * uLensOn;
   float span = mix(1.25, uLens.z * 2.0 / uRes.y, uLensOn);
-  vec3 col = mix(mess(p * 1.5), sorted(p - lensP, span), order);
+  // Ribbons are translucent: the churn stays visible through them, bent by their shape.
+  vec2 q = p - lensP;
+  vec2 bend = vec2(sin(q.y / span * 15.7) * 0.03, cos(q.x / span * 5.0 + uTime * 0.2) * 0.02) * order;
+  vec3 world = mess((p + bend) * 1.5);
+  vec3 ribbons = sorted(q, span);
+  vec3 col = mix(world, world * 1.6 + ribbons * 0.72, order);
   col *= mix(uDim, 1.0, inLens);
+  float pool = exp(-pow(p.y + 0.06, 2.0) * 4.5);
+  col += uGlow * pool * (world * 1.25 + vec3(0.03, 0.033, 0.04));
   frag = vec4(col, 1.0);
 }`;
 
@@ -107,6 +115,8 @@ class Field {
   private orderTarget = 0;
   private dim = 1;
   private dimTarget = 1;
+  private glow = 0;
+  private glowTarget = 0;
   reduced = false;
 
   attach(canvas: HTMLCanvasElement) {
@@ -144,9 +154,10 @@ class Field {
   }
 
   /** How sorted the world is (0-1) and how bright, usually driven by scroll. */
-  setMood(order: number, dim: number) {
+  setMood(order: number, dim: number, glow = 0) {
     this.orderTarget = order;
     this.dimTarget = dim;
+    this.glowTarget = glow;
   }
 
   private onLost = (e: Event) => {
@@ -213,6 +224,7 @@ class Field {
     if (!this.reduced) this.time += dt;
     this.order = damp(this.order, this.orderTarget, 3, dt);
     this.dim = damp(this.dim, this.dimTarget, 3, dt);
+    this.glow = damp(this.glow, this.glowTarget, 3, dt);
 
     const sc = this.scene;
     const scale = this.sw / window.innerWidth;
@@ -240,12 +252,13 @@ class Field {
     gl.uniform1f(sc.u("uLensOn"), lensOn);
     gl.uniform1f(sc.u("uOrder"), this.order);
     gl.uniform1f(sc.u("uDim"), this.dim);
+    gl.uniform1f(sc.u("uGlow"), this.glow);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
     gl.generateMipmap(gl.TEXTURE_2D);
 
-    const n = this.collector.collect(this.dpr);
+    const n = this.collector.collect(this.dpr, dt);
     const co = this.composite;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.w, this.h);
@@ -256,6 +269,9 @@ class Field {
     gl.uniform1i(co.u("uCount"), n);
     gl.uniform4fv(co.u("uRect"), this.collector.rects);
     gl.uniform4fv(co.u("uMeta"), this.collector.meta);
+    gl.uniform4fv(co.u("uLiquid"), this.collector.liquid);
+    gl.uniform1fv(co.u("uSlosh"), this.collector.slosh);
+    gl.uniform1f(co.u("uTime"), this.time);
     gl.uniform2f(co.u("uMouse"), this.mouse[0] * this.dpr, this.mouse[1] * this.dpr);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }

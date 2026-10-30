@@ -16,7 +16,9 @@ export function Home() {
       const h = window.innerHeight;
       const y = window.scrollY;
       const p = clamp01(y / h);
-      field.setMood(clamp01((y - h * 0.3) / h) * 0.16, 1 - clamp01((y - h * 0.15) / (h * 0.9)) * 0.62);
+      // Backlight peaks while the tubes are on screen, and again around the app preview.
+      const glow = Math.max(0, 1 - Math.abs(y - h) / (h * 0.75));
+      field.setMood(clamp01((y - h * 0.3) / h) * 0.16, 1 - clamp01((y - h * 0.15) / (h * 0.9)) * 0.62, glow);
       document.documentElement.style.setProperty("--hero-p", p.toFixed(3));
     };
     const onScroll = () => {
@@ -88,7 +90,7 @@ function Hero() {
     const place = (x: number, y: number) => {
       el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
     };
-    const rest = () => ({ x: window.innerWidth * (window.innerWidth < 760 ? 0.5 : 0.72), y: window.innerHeight * (window.innerWidth < 760 ? 0.28 : 0.42) });
+    const rest = () => ({ x: window.innerWidth * (window.innerWidth < 760 ? 0.62 : 0.74), y: window.innerHeight * (window.innerWidth < 760 ? 0.28 : 0.36) });
     let { x, y } = rest();
     let vx = 0;
     let vy = 0;
@@ -131,7 +133,7 @@ function Hero() {
   return (
     <section className="hero">
       <div className="lens-wrap">
-        <div className="lens" ref={lens} data-glass="clear" data-lens data-bevel="58" />
+        <div className="lens" ref={lens} data-glass="clear" data-lens data-bevel="30" />
       </div>
       <div className="hero__copy">
         <h1>
@@ -152,20 +154,41 @@ function Hero() {
   );
 }
 
+const TUBE_LEVELS = [0.74, 0.58, 0.42, 0.66, 0.3];
+
 function Streams() {
   const [hover, setHover] = useState<CategoryId | null>(null);
+  const [filled, setFilled] = useState(0);
+  const tubes = useRef<HTMLDivElement>(null);
+  // Tubes pour in one after another when they arrive on screen.
+  useEffect(() => {
+    if (motionReduced()) return setFilled(5);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const io = new IntersectionObserver(([e]) => {
+      if (!e?.isIntersecting) return;
+      io.disconnect();
+      for (let i = 1; i <= 5; i++) timers.push(setTimeout(() => setFilled(i), i * 130));
+    });
+    if (tubes.current) io.observe(tubes.current);
+    return () => {
+      io.disconnect();
+      timers.forEach(clearTimeout);
+    };
+  }, []);
   const shown = CATEGORIES.find((c) => c.id === hover);
   return (
     <section className="streams" id="streams">
       <h2 className="rv">Five streams.</h2>
-      <div className="tubes rv">
+      <div className="tubes rv" ref={tubes}>
         {CATEGORIES.map((c, i) => (
           <div
             key={c.id}
             className="tube"
             data-glass="clear"
+            data-liquid={categoryColor(c.id)}
+            data-level={i < filled ? TUBE_LEVELS[i]! + (hover === c.id ? 0.08 : 0) : 0}
             tabIndex={0}
-            style={{ "--c": categoryColor(c.id), "--i": i, "--l": [0.74, 0.58, 0.42, 0.66, 0.3][i] } as React.CSSProperties}
+            style={{ "--c": categoryColor(c.id), "--i": i, "--l": TUBE_LEVELS[i] } as React.CSSProperties}
             onPointerEnter={() => setHover(c.id)}
             onPointerLeave={() => setHover(null)}
             onFocus={() => setHover(c.id)}
@@ -246,7 +269,15 @@ function Preview() {
           </div>
           <div className="win__dock">
             {CATEGORIES.map((cat) => (
-              <span key={cat.id} className="win__tube" data-glass="clear" data-on={reducedStep === 3 && cat.id === d.glyph} style={{ "--c": categoryColor(cat.id) } as React.CSSProperties}>
+              <span
+                key={cat.id}
+                className="win__tube"
+                data-glass="clear"
+                data-liquid={categoryColor(cat.id)}
+                data-level={reducedStep === 3 && cat.id === d.glyph ? 0.74 : 0}
+                data-on={reducedStep === 3 && cat.id === d.glyph}
+                style={{ "--c": categoryColor(cat.id) } as React.CSSProperties}
+              >
                 <u />
                 <CategoryGlyph id={cat.id} size={18} color="#fff" />
               </span>
