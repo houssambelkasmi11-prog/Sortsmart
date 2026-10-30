@@ -12,7 +12,14 @@ export interface SceneDetectorOptions {
   stableMs?: number;
   /** Per-pixel difference (0-255) ignored as sensor noise. */
   pixelTolerance?: number;
+  /** A hand never holds perfectly still: after this long, scan an item that is nearly still. */
+  maxWaitMs?: number;
 }
+
+/** Same item if less than this differs from the frame already scanned, so a wobble doesn't rescan. */
+const SAME_ITEM = 0.1;
+/** The most a frame may still be moving for a scan once maxWaitMs has passed. */
+const NEARLY_STILL = 0.2;
 
 export type ScenePhase = "calibrating" | "empty" | "moving" | "settling" | "ready" | "holding";
 
@@ -40,11 +47,15 @@ export class SceneDetector {
   private baseline: Uint8Array | null = null;
   private scanned: Uint8Array | null = null;
   private stableSince = 0;
+  private itemSince = 0;
+  private waited = false;
+  private readonly maxWait: number;
 
   constructor(opts: SceneDetectorOptions = {}) {
-    this.motion = opts.motionThreshold ?? 0.03;
+    this.motion = opts.motionThreshold ?? 0.06;
     this.change = opts.changeThreshold ?? 0.05;
-    this.stableMs = opts.stableMs ?? 700;
+    this.stableMs = opts.stableMs ?? 350;
+    this.maxWait = opts.maxWaitMs ?? 1500;
     this.tolerance = opts.pixelTolerance ?? 14;
   }
 
@@ -54,6 +65,8 @@ export class SceneDetector {
     this.baseline = null;
     this.scanned = null;
     this.stableSince = 0;
+    this.itemSince = 0;
+    this.waited = false;
   }
 
   /** The last scan didn't happen (a request was still running): allow it again. */
@@ -69,8 +82,21 @@ export class SceneDetector {
       return { phase: this.baseline ? "moving" : "calibrating", scan: false };
     }
     const isEmpty = !!this.baseline && frameDifference(frame, this.baseline, this.tolerance) < this.change;
-    if (frameDifference(frame, previous, this.tolerance) > this.motion) {
+    if (isEmpty || !this.baseline) {
+      this.itemSince = 0;
+      this.waited = false;
+    } else {
+      this.itemSince ||= now;
+    }
+    const movement = frameDifference(frame, previous, this.tolerance);
+    if (movement > this.motion) {
       this.stableSince = now;
+      // Only once per visit, or someone fidgeting in view would scan over and over.
+      if (this.itemSince && !this.waited && now - this.itemSince >= this.maxWait && movement < NEARLY_STILL) {
+        this.waited = true;
+        this.scanned = frame;
+        return { phase: "ready", scan: true };
+      }
       return { phase: this.baseline ? (isEmpty ? "empty" : "moving") : "calibrating", scan: false };
     }
     if (now - this.stableSince < this.stableMs) {
@@ -86,7 +112,7 @@ export class SceneDetector {
       this.scanned = null;
       return { phase: "empty", scan: false };
     }
-    if (this.scanned && frameDifference(frame, this.scanned, this.tolerance) < this.change) {
+    if (this.scanned && frameDifference(frame, this.scanned, this.tolerance) < SAME_ITEM) {
       return { phase: "holding", scan: false };
     }
     this.scanned = frame;

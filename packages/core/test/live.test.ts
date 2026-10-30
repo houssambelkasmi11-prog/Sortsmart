@@ -44,6 +44,23 @@ describe("SceneDetector", () => {
     expect(updates.at(-1)!.phase).toBe("holding");
   });
 
+  it("scans a hand-held item that never fully stops, but only once", () => {
+    const d = new SceneDetector();
+    run(d, empty, 0, 1000);
+    let i = 0;
+    // 10% of the picture shimmers on every frame: a hand, not a thrown item.
+    const updates = run(d, () => item(40 + (i++ % 2) * 10), 1200, 6000, 120);
+    expect(updates.filter((u) => u.scan)).toHaveLength(1);
+  });
+
+  it("does not rescan an item that only wobbles after settling", () => {
+    const d = new SceneDetector();
+    run(d, empty, 0, 1000);
+    run(d, () => item(40), 1200, 1500);
+    const updates = run(d, () => item(44), 2800, 1500);
+    expect(updates.some((u) => u.scan)).toBe(false);
+  });
+
   it("does not scan while the picture keeps moving", () => {
     const d = new SceneDetector();
     run(d, empty, 0, 1000);

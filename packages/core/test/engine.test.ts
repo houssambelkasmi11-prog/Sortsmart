@@ -86,13 +86,22 @@ describe("ClassificationEngine policy", () => {
 
   it("retries transient failures a bounded number of times", async () => {
     const local = stubProvider("l", "local", async () => {
-      throw new ProviderError("timeout", "slow");
+      throw new ProviderError("server", "busy");
     });
     const { engine } = setup({ mode: "local", localProviderId: "l" }, [local]);
     const r = await engine.classify(image);
     expect(r.ok).toBe(false);
-    expect(!r.ok && r.error.kind).toBe("timeout");
+    expect(!r.ok && r.error.kind).toBe("server");
     expect(local.calls).toBe(3);
+  });
+
+  it("retries a timeout only once, since each one already cost the whole wait", async () => {
+    const local = stubProvider("l", "local", async () => {
+      throw new ProviderError("timeout", "slow");
+    });
+    const { engine } = setup({ mode: "local", localProviderId: "l" }, [local]);
+    await engine.classify(image);
+    expect(local.calls).toBe(2);
   });
 
   it("caches results and invalidates when the model changes", async () => {

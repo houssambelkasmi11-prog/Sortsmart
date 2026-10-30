@@ -17,7 +17,7 @@ export { MockProvider, MOCK_PROVIDER_ID, MOCK_MODEL, MOCK_SCENARIOS, createMockC
 export { OllamaProvider } from "./providers/ollama";
 export { OpenAICompatibleProvider } from "./providers/openaiCompatible";
 export { AnthropicProvider } from "./providers/anthropic";
-export { GeminiProvider } from "./providers/gemini";
+export { GeminiProvider, geminiThinkingConfig } from "./providers/gemini";
 export * from "./device/types";
 export * from "./device/command";
 export { MockSortingDevice, type MockDeviceScenario } from "./device/mock";

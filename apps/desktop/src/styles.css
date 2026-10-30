@@ -2136,3 +2136,9 @@ select.setup-input option {
     transition: none;
   }
 }
+
+.capsule__time {
+  color: var(--ivory-3);
+  font: 500 var(--fs-sm) var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}

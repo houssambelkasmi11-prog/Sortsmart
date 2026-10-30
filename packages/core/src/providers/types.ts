@@ -46,6 +46,8 @@ export interface AIProvider {
   capabilities(model?: string): Promise<ProviderCapabilities>;
   listModels(signal?: AbortSignal): Promise<ModelInfo[]>;
   testConnection(signal?: AbortSignal): Promise<ConnectionTestResult>;
+  /** Optional: get ready ahead of the first scan so it isn't the slow one. */
+  warmUp?(signal?: AbortSignal): Promise<void>;
   /** Returns the validated model output. Throws ProviderError on any failure. */
   classify(input: ImageInput, signal?: AbortSignal): Promise<ProviderClassifyOutput>;
 }

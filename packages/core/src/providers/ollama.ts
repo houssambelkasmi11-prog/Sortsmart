@@ -19,12 +19,17 @@ interface ChatResponse {
 }
 
 const VISION_FAMILIES = ["clip", "mllama"];
+/** How long Ollama keeps the model in memory between scans. Loading it again takes many seconds. */
+const KEEP_ALIVE = "30m";
+/** An empty thought: stops thinking models on Ollama versions that ignore think:false. */
+const NO_THOUGHTS = "<think>\n\n</think>\n\n";
 
 /** Ollama native API (https://github.com/ollama/ollama/blob/main/docs/api.md). */
 export class OllamaProvider implements AIProvider {
   readonly kind = "ollama" as const;
   readonly location = "local" as const;
   private capabilityCache = new Map<string, boolean | null>();
+  private thinkingModels = new Set<string>();
 
   constructor(
     readonly config: ProviderConfig,
@@ -62,11 +67,23 @@ export class OllamaProvider implements AIProvider {
       false,
     );
     let result: boolean | null = null;
+    if (data.capabilities?.includes("thinking")) this.thinkingModels.add(model);
     if (Array.isArray(data.capabilities)) result = data.capabilities.includes("vision");
     else if (data.projector_info) result = true;
     else if (data.details?.families?.some((f) => VISION_FAMILIES.includes(f))) result = true;
     this.capabilityCache.set(model, result);
     return result;
+  }
+
+  /** Loads the model ahead of the first scan. */
+  async warmUp(signal?: AbortSignal) {
+    const model = requireModel(this.config);
+    await requestJson(
+      this.transport,
+      { method: "POST", url: this.url("/api/chat"), headers: { "content-type": "application/json" }, timeoutMs: this.config.timeoutMs, body: JSON.stringify({ model, messages: [], keep_alive: KEEP_ALIVE }) },
+      signal,
+      false,
+    );
   }
 
   async capabilities(model = this.config.model): Promise<ProviderCapabilities> {
@@ -89,6 +106,7 @@ export class OllamaProvider implements AIProvider {
           : `Could not verify that "${model}" accepts images. Update Ollama or choose a model with the "vision" capability.`,
       );
     }
+    const thinks = this.thinkingModels.has(model);
     const data = await requestJson<ChatResponse>(
       this.transport,
       {
@@ -100,10 +118,13 @@ export class OllamaProvider implements AIProvider {
           model,
           stream: false,
           format: OUTPUT_JSON_SCHEMA,
+          keep_alive: KEEP_ALIVE,
           options: { temperature: 0 },
+          ...(thinks ? { think: false } : {}),
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: USER_PROMPT, images: [input.base64] },
+            ...(thinks ? [{ role: "assistant", content: NO_THOUGHTS }] : []),
           ],
         }),
       },

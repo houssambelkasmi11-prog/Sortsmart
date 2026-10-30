@@ -12,15 +12,23 @@ type CameraStatus = "off" | "starting" | "on" | "denied" | "none" | "error";
 
 const SAMPLE_W = 48;
 const SAMPLE_H = 36;
-const SAMPLE_MS = 200;
-const CLEAR_AFTER_EMPTY_MS = 1500;
+const SAMPLE_MS = 120;
+const CLEAR_AFTER_EMPTY_MS = 600;
+/** Camera frames are sent at most this big: plenty to recognise an item, and quicker to send. */
+const LIVE_MAX_EDGE = 768;
+/** Tries per item after a temporary failure such as a busy service. */
+const AUTO_RETRIES = 2;
+const RETRY_DELAY_MS = 3000;
+const RETRY_DELAY_CAP_MS = 30_000;
+const TEMPORARY = ["rate-limit", "server", "network", "timeout", "invalid-response"];
 
-function grabFrame(video: HTMLVideoElement): Promise<Blob> {
-  const c = document.createElement("canvas");
-  c.width = video.videoWidth;
-  c.height = video.videoHeight;
-  c.getContext("2d")!.drawImage(video, 0, 0);
-  return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("Capture failed"))), "image/jpeg", 0.92));
+function failureWord(kind: string, retrying: boolean): string {
+  if (retrying) return "Busy, trying again";
+  if (kind === "auth") return "Check your API key";
+  if (kind === "rate-limit") return "Too many requests";
+  if (kind === "network") return "No connection";
+  if (kind === "timeout") return "Took too long";
+  return "Couldn't classify";
 }
 
 export function Live() {
@@ -47,6 +55,10 @@ export function Live() {
   const busyRef = useRef(false);
   const detector = useRef(new SceneDetector());
   const fileRef = useRef<HTMLInputElement>(null);
+  const retriesRef = useRef(0);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [retrying, setRetrying] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
 
   const plan = engine.plan(settings);
   const usesCloud = plan.providers.some((p) => p.location === "cloud");
@@ -113,10 +125,12 @@ export function Live() {
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      clearTimeout(retryTimer.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       glass.setSource(null);
       glass.setAnalysing(false);
+      glass.setYielding(false);
     };
     // Mount and unmount only: the camera never runs outside this screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,8 +146,10 @@ export function Live() {
 
   // ── Classification ──
   const analyse = useCallback(
-    async (blob: Blob) => {
+    async (source: Blob | HTMLVideoElement) => {
       abortRef.current?.abort();
+      clearTimeout(retryTimer.current);
+      setRetrying(false);
       const ac = new AbortController();
       abortRef.current = ac;
       busyRef.current = true;
@@ -141,21 +157,36 @@ export function Live() {
       setExecution(null);
       setWhy(false);
       setNotice(null);
-      setPhase({ kind: "running", location: engine.plan(settings).providers[0]?.location ?? "local" });
+      const location = engine.plan(settings).providers[0]?.location ?? "local";
+      setPhase({ kind: "running", location });
       glass.setAnalysing(true);
+      glass.setYielding(location === "local");
+      const isLive = source instanceof HTMLVideoElement;
       try {
-        const { input, previewUrl } = await prepareImageSource(blob, settings.imageMaxEdge);
+        const { input, previewUrl } = await prepareImageSource(source, isLive ? Math.min(settings.imageMaxEdge, LIVE_MAX_EDGE) : settings.imageMaxEdge);
         URL.revokeObjectURL(previewUrl);
         const outcome = await engine.classify(input, ac.signal);
         app.bumpStats();
         if (ac.signal.aborted) return;
         setPhase({ kind: "done", outcome });
         if (outcome.ok) {
+          retriesRef.current = 0;
           const r = outcome.result;
           addRecord({ id: r.id, result: r, userCategory: null, correctedAt: null, imageSha256: input.sha256 });
           if (!r.requiresReview && r.category) setSession((s) => ({ ...s, [r.id]: r.category! }));
         } else if (outcome.error.kind === "budget") {
           setBudgetHit(true);
+        } else if (isLive && TEMPORARY.includes(outcome.error.kind) && retriesRef.current < AUTO_RETRIES) {
+          // Nothing for the user to do: look again shortly if the item is still there.
+          retriesRef.current += 1;
+          setRetrying(true);
+          retryTimer.current = setTimeout(() => {
+            setRetrying(false);
+            detector.current.forgetScan();
+          }, Math.min(RETRY_DELAY_CAP_MS, outcome.error.retryAfterMs ?? RETRY_DELAY_MS));
+        } else {
+          // A problem that won't fix itself: say what it is without making them dig.
+          setWhy(true);
         }
       } catch (e) {
         if (!ac.signal.aborted) {
@@ -166,6 +197,7 @@ export function Live() {
         if (abortRef.current === ac) {
           busyRef.current = false;
           glass.setAnalysing(false);
+          glass.setYielding(false);
         }
       }
     },
@@ -197,21 +229,42 @@ export function Live() {
       setScene(update.phase);
       if (update.phase === "empty") {
         emptySince ||= now;
+        retriesRef.current = 0;
         if (hasResultRef.current && !busyRef.current && now - emptySince > CLEAR_AFTER_EMPTY_MS) setPhase({ kind: "idle" });
       } else {
         emptySince = 0;
       }
-      if (!update.scan) return;
-      if (busyRef.current) detector.current.forgetScan();
-      else void grabFrame(video).then((b) => analyseRef.current(b));
+      // A new item replaces whatever is still being looked at.
+      if (update.scan) void analyseRef.current(video);
     }, SAMPLE_MS);
     return () => clearInterval(t);
   }, [camera, still, autoOn, noBackend]);
 
   const shutter = () => {
     if (still) return void analyse(still.blob);
-    if (camera === "on" && videoRef.current) void grabFrame(videoRef.current).then(analyse);
+    if (camera === "on" && videoRef.current) void analyse(videoRef.current);
   };
+
+  // Load a local model as soon as the camera opens, so the first scan isn't the slow one.
+  const firstProvider = plan.providers[0];
+  const warmKey = firstProvider?.warmUp ? `${firstProvider.id}|${firstProvider.config.model}` : null;
+  useEffect(() => {
+    if (camera !== "on" || !warmKey) return;
+    const ac = new AbortController();
+    void firstProvider?.warmUp?.(ac.signal).catch(() => {});
+    return () => ac.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera, warmKey]);
+
+  // A long wait is easier with a clock on it.
+  const isRunning = phase.kind === "running";
+  useEffect(() => {
+    setElapsed(0);
+    if (!isRunning) return;
+    const started = performance.now();
+    const t = setInterval(() => setElapsed(Math.floor((performance.now() - started) / 1000)), 500);
+    return () => clearInterval(t);
+  }, [isRunning]);
 
   const onFile = (f: File | undefined) => {
     if (!f) return;
@@ -273,13 +326,13 @@ export function Live() {
   // ── Status capsule ──
   let word = "";
   let tone = "var(--ivory)";
-  if (running) word = phase.location === "cloud" ? "Analysing in the cloud" : phase.location === "demo" ? "Simulating" : "Analysing on this Mac";
+  if (running) word = phase.location === "cloud" ? "Analysing in the cloud" : phase.location === "demo" ? "Simulating" : "Analysing on this computer";
   else if (result) {
     word = hazardous && !userCategory ? "Special drop-off" : review ? "Which stream?" : categoryLabel(finalCategory);
     tone = hazardous && !userCategory ? "var(--danger)" : finalCategory ? categoryColor(finalCategory) : "var(--amber)";
   } else if (failure) {
-    word = "Couldn't classify";
-    tone = "var(--danger)";
+    word = failureWord(failure.error.kind, retrying);
+    tone = retrying ? "var(--amber)" : "var(--danger)";
   } else if (noBackend) word = "Connect an AI first";
   else if (budgetHit) word = "Cloud budget reached";
   else if (!autoOn) word = "Press the shutter";
@@ -316,10 +369,11 @@ export function Live() {
         <div className="live__top">
           <Capsule>
             <div className="capsule__row">
-              {running && <span className="spinner" aria-hidden />}
+              {(running || retrying) && <span className="spinner" aria-hidden />}
               <h2 className="capsule__word" key={word} style={{ color: tone }}>
                 {word}
               </h2>
+              {running && elapsed >= 2 && <span className="capsule__time">{elapsed}s</span>}
               {result && (
                 <span className="capsule__num">
                   <CountUp value={result.confidence * 100} ms={1000} />
@@ -453,7 +507,7 @@ export function Live() {
           <p>With Auto on, SORTÉ sends a photo to your cloud provider each time a new item holds still in view.</p>
           <p className="dialog__provider">{plan.providers.filter((p) => p.location === "cloud").map((p) => p.name).join(", ")}</p>
           <p>
-            Sent: the frame ({settings.imageMaxEdge}px) and a short prompt. It can capture anything in view. Limit: {settings.budget.maxCloudRequestsPerSession} requests per session. The shutter works without this.
+            Sent: the frame ({Math.min(settings.imageMaxEdge, LIVE_MAX_EDGE)}px) and a short prompt. It can capture anything in view. Limit: {settings.budget.maxCloudRequestsPerSession} requests per session. The shutter works without this.
           </p>
         </div>
         <div className="row row--end">

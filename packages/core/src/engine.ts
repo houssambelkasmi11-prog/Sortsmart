@@ -206,8 +206,12 @@ export class ClassificationEngine {
         return await fn();
       } catch (err) {
         const e = toProviderError(err);
-        if (!e.retryable || attempt >= this.maxRetries || signal?.aborted) throw e;
-        const delay = Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** attempt) * (0.75 + Math.random() * 0.5);
+        // A garbled answer is often fine the second time. A timeout already cost the whole wait.
+        const limit = e.kind === "invalid-response" || e.kind === "timeout" ? 1 : this.maxRetries;
+        if (!(e.retryable || e.kind === "invalid-response") || attempt >= limit || signal?.aborted) throw e;
+        // A long wait the provider asked for is the caller's to schedule, not a frozen spinner.
+        if ((e.retryAfterMs ?? 0) > BACKOFF_CAP_MS) throw e;
+        const delay = e.retryAfterMs ?? Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** attempt) * (0.75 + Math.random() * 0.5);
         this.logger.log("info", `Transient ${e.kind} error, retry ${attempt + 1}/${this.maxRetries} in ${Math.round(delay)} ms.`);
         await this.sleep(delay, signal);
       }

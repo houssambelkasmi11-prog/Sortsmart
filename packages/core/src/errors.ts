@@ -20,13 +20,16 @@ export class ProviderError extends Error {
   readonly status?: number;
   /** Whether image data may have left the device before the failure. */
   readonly dataSent: boolean;
+  /** How long the provider asked us to wait before trying again. */
+  readonly retryAfterMs?: number;
 
-  constructor(kind: ProviderErrorKind, message: string, opts: { status?: number; dataSent?: boolean } = {}) {
+  constructor(kind: ProviderErrorKind, message: string, opts: { status?: number; dataSent?: boolean; retryAfterMs?: number } = {}) {
     super(message);
     this.name = "ProviderError";
     this.kind = kind;
     this.status = opts.status;
     this.dataSent = opts.dataSent ?? false;
+    this.retryAfterMs = opts.retryAfterMs;
   }
 
   get retryable(): boolean {
@@ -39,7 +42,11 @@ export class ProviderError extends Error {
     if (status === 401 || status === 403 || (status === 400 && body.includes("API_KEY_INVALID"))) return new ProviderError("auth", `Authentication failed (${status}). Check the API key.`, { status, dataSent });
     if (status === 404) return new ProviderError("not-found", `Endpoint or model not found (404). ${detail}`, { status, dataSent });
     if (status === 408) return new ProviderError("timeout", "The provider timed out (408).", { status, dataSent });
-    if (status === 429) return new ProviderError("rate-limit", "Rate limited by the provider (429).", { status, dataSent });
+    if (status === 429) {
+      // Gemini says how long to wait: "retryDelay": "23s".
+      const delay = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/.exec(body);
+      return new ProviderError("rate-limit", `The provider's rate limit was reached (429). ${detail}`.trim(), { status, dataSent, retryAfterMs: delay ? Number(delay[1]) * 1000 : undefined });
+    }
     if (status >= 500) return new ProviderError("server", `Provider error (${status}). ${detail}`, { status, dataSent });
     return new ProviderError("invalid-request", `Request rejected (${status}). ${detail}`, { status, dataSent });
   }

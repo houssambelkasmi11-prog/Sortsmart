@@ -31,6 +31,7 @@ class GlassRenderer {
   private canvas: HTMLCanvasElement | null = null;
   private vao: WebGLVertexArrayObject | null = null;
   private frame = 0;
+  private minFrameMs = 0;
   private running = false;
   private time = 0;
   private last = 0;
@@ -115,6 +116,10 @@ class GlassRenderer {
   setAnalysing(on: boolean) {
     this.scanTarget = on ? 1 : 0;
   }
+  /** A model on this computer shares its GPU with this scene: draw less while it works. */
+  setYielding(on: boolean) {
+    this.minFrameMs = on ? 66 : 0;
+  }
   firePulse(rgb: Rgb) {
     this.pulseColor = rgb;
     this.pulse = 0;
@@ -139,6 +144,10 @@ class GlassRenderer {
     this.last = performance.now();
     const loop = (now: number) => {
       if (!this.running) return;
+      if (now - this.last < this.minFrameMs) {
+        this.frame = requestAnimationFrame(loop);
+        return;
+      }
       const dt = Math.min(0.1, (now - this.last) / 1000);
       this.last = now;
       this.adapt(dt);

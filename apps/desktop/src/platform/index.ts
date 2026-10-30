@@ -96,17 +96,20 @@ export async function storeLocation(): Promise<string> {
 
 // ───────── Images ─────────
 
-/** Downscale on-device to the configured max edge and re-encode as JPEG before hashing/sending. */
-export async function prepareImageSource(source: Blob, maxEdge: number): Promise<{ input: ImageInput; previewUrl: string }> {
-  const bitmap = await createImageBitmap(source);
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  const w = Math.max(1, Math.round(bitmap.width * scale));
-  const h = Math.max(1, Math.round(bitmap.height * scale));
+/** Downscale on-device to the configured max edge and re-encode as JPEG before hashing/sending. A video gives its current frame. */
+export async function prepareImageSource(source: Blob | HTMLVideoElement, maxEdge: number): Promise<{ input: ImageInput; previewUrl: string }> {
+  const isVideo = source instanceof HTMLVideoElement;
+  const bitmap = isVideo ? null : await createImageBitmap(source);
+  const fullW = isVideo ? source.videoWidth : bitmap!.width;
+  const fullH = isVideo ? source.videoHeight : bitmap!.height;
+  const scale = Math.min(1, maxEdge / Math.max(fullW, fullH));
+  const w = Math.max(1, Math.round(fullW * scale));
+  const h = Math.max(1, Math.round(fullH * scale));
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close();
+  canvas.getContext("2d")!.drawImage(isVideo ? source : bitmap!, 0, 0, w, h);
+  bitmap?.close();
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not encode image."))), "image/jpeg", 0.88));
   const bytes = new Uint8Array(await blob.arrayBuffer());
   return { input: await prepareImage(bytes, "image/jpeg"), previewUrl: URL.createObjectURL(blob) };
