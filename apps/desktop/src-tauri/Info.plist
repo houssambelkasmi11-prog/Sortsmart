@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
   <key>NSCameraUsageDescription</key>
-  <string>SORTÉ uses the camera only when you choose “Camera” to photograph an item for classification.</string>
+  <string>SORTÉ uses the camera on the Live screen to recognise the item you show it.</string>
 </dict>
 </plist>
