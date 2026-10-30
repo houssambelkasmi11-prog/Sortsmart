@@ -54,6 +54,10 @@ interface AppState {
   updateSheetOpen: boolean;
   closeUpdateSheet(): void;
   startUpdateDownload(update: Update, opts?: { silent?: boolean }): Promise<void>;
+  /** First-run setup is showing instead of the app. */
+  setupOpen: boolean;
+  openSetup(): void;
+  closeSetup(): void;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -74,6 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<SortingDevice | null>(null);
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
   const [, setTick] = useState(0);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [update, setUpdate] = useState<UpdateState>({ kind: "idle" });
   const updateRef = useRef(update);
   updateRef.current = update;
@@ -140,6 +145,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const s = loadSettings(await readStore("settings"));
       const h = loadHistory(await readStore("history"), s.value.history.retentionDays);
       setSettings(s.value);
+      // Anyone who already connected an AI before setup existed skips it.
+      setSetupOpen(s.value.onboarding.completedAt === null && !s.value.localProviderId && !s.value.cloudProviderId);
       setHistory(s.value.history.enabled ? h.value.records : []);
       setNotices([s.message, h.message].filter((m): m is string => !!m));
       setReady(true);
@@ -258,6 +265,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     startupChecked,
     updateSheetOpen,
     closeUpdateSheet,
+    setupOpen,
+    openSetup: () => setSetupOpen(true),
+    closeSetup: () => setSetupOpen(false),
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

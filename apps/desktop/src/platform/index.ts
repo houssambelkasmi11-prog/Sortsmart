@@ -1,5 +1,6 @@
 import { ProviderError, createFetchTransport, prepareImage, type HttpRequest, type HttpResponse, type HttpTransport, type ImageInput } from "@sorte/core";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 /**
  * Platform boundary. In SORTÉ Desktop, privileged work (keychain, network
@@ -44,6 +45,12 @@ export const transport: HttpTransport = isDesktop ? tauriTransport() : createFet
 // ───────── Secrets (OS credential store, via Rust) ─────────
 
 export const secretsAvailable = isDesktop;
+
+/** Opens a page in the default browser. The allowed hosts are listed in capabilities/default.json. */
+export async function openExternal(url: string): Promise<void> {
+  if (isDesktop) await openUrl(url);
+  else window.open(url, "_blank", "noopener");
+}
 
 /** Store a key bound to the endpoint's host. Returns only the last 4 characters for display. */
 export async function saveSecret(providerId: string, secret: string, endpoint: string): Promise<string> {

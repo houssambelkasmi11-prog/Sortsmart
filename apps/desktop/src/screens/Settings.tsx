@@ -7,7 +7,7 @@ import { appVersion, updatesSupported } from "../platform/updates";
 import { MODE_META, useApp } from "../state/store";
 
 export function Settings() {
-  const { settings, updateSettings, providers, engine, logs, bumpStats, update, runUpdateCheck } = useApp();
+  const { settings, updateSettings, providers, engine, logs, bumpStats, update, runUpdateCheck, openSetup } = useApp();
   const [version, setVersion] = useState("");
   useEffect(() => void appVersion().then(setVersion), []);
   const [disclosure, setDisclosure] = useState(false);
@@ -29,6 +29,16 @@ export function Settings() {
               <span className="s-hint">{MODE_META[m].description}</span>
             </button>
           ))}
+        </div>
+
+        <div className="toggle-row">
+          <div>
+            <p className="s-label">First-time setup</p>
+            <p className="s-hint">Walk through connecting an AI again.</p>
+          </div>
+          <Button size="sm" onClick={openSetup}>
+            Run setup again
+          </Button>
         </div>
 
         <div className="toggle-row">

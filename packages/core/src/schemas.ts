@@ -126,6 +126,8 @@ export const ApplicationSettingsSchema = z.object({
       cloudAcknowledgedAt: z.string().nullable().default(null),
     })
     .default({}),
+  /** Set when first-run setup is finished; the camera stays closed until then. */
+  onboarding: z.object({ completedAt: z.string().nullable().default(null) }).default({}),
   updates: z.object({ autoCheck: z.boolean().default(true), autoDownload: z.boolean().default(true) }).default({}),
   reducedMotion: z.enum(["system", "on", "off"]).default("system"),
 });

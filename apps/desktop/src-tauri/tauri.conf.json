@@ -48,14 +48,33 @@
     "macOS": {
       "minimumSystemVersion": "11.0",
       "entitlements": "Entitlements.plist",
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "dmg": {
+        "background": "installer/dmg-background.png",
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 190
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 190
+        }
+      }
     },
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
       },
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "installerHooks": "installer/hooks.nsh"
       }
     },
     "createUpdaterArtifacts": true

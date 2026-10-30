@@ -9,6 +9,15 @@
     "core:default",
     "core:window:allow-start-dragging",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://aistudio.google.com/*" },
+        { "url": "https://platform.openai.com/*" },
+        { "url": "https://console.anthropic.com/*" },
+        { "url": "https://ollama.com/*" }
+      ]
+    }
   ]
 }

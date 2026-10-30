@@ -10,6 +10,7 @@ import { Overview } from "./screens/Overview";
 import { Providers } from "./screens/Providers";
 import { Settings } from "./screens/Settings";
 import { Live } from "./screens/Live";
+import { Onboarding } from "./screens/Onboarding";
 import { GlassBackground } from "./gl/GlassBackground";
 import { MODE_META, useApp, type Screen } from "./state/store";
 
@@ -24,7 +25,7 @@ const NAV: { id: Screen; label: string; icon: string }[] = [
 ];
 
 export function App() {
-  const { screen, go, settings, providers, ready, notices, dismissNotice } = useApp();
+  const { screen, go, settings, providers, ready, notices, dismissNotice, setupOpen } = useApp();
   const mode = MODE_META[settings.mode];
   const activeId = settings.mode === "cloud" ? settings.cloudProviderId : settings.mode === "demo" ? "demo" : settings.localProviderId;
   const active = activeId ? providers.get(activeId) : undefined;
@@ -72,6 +73,16 @@ export function App() {
           </div>
         )}
         <div className="dragbar" data-tauri-drag-region />
+        {setupOpen ? (
+          <>
+            <Onboarding />
+            <div className="corner">
+              <UpdateBanner />
+              <UpdateSheet />
+            </div>
+          </>
+        ) : (
+          <>
         <nav className="nav" data-glass="frost" aria-label="Main navigation" style={{ "--idx": Math.max(0, NAV.findIndex((n) => n.id === screen)) } as React.CSSProperties}>
           <span className="nav__pill" aria-hidden />
           {NAV.map((n) => (
@@ -115,6 +126,8 @@ export function App() {
             {shown === "settings" && <Settings />}
           </div>
         </main>
+          </>
+        )}
       </div>
     </>
   );
