@@ -1,6 +1,7 @@
 # Every push to main that touches the app publishes a signed release, and
 # installed apps pick it up through latest.json. The release stays a draft
 # until every platform has built, so apps never see a half-finished one.
+# Needs the repository secret TAURI_SIGNING_PRIVATE_KEY (see README).
 name: Release
 
 on:
