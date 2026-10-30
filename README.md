@@ -32,13 +32,32 @@ npm run tauri build      # installers for this OS → apps/desktop/src-tauri/tar
 - **Devices** (`packages/core/src/device`): transport-independent `SortingDevice`. Only a labelled simulator exists; commands require a review-free result or a person's decision. Accepted, acknowledged and physically verified are reported separately.
 - **Security boundary**: the desktop webview has a strict CSP and no network access. All HTTP goes through Rust (`src-tauri/src/http.rs`), which validates URLs/headers, follows no redirects, and attaches keys from the OS credential store only to the origin they were saved for. The UI only ever sees the last 4 key characters. The website has no keys and no provider access.
 
-## Releases
+## Releases & updates
 
-1. `npm run tauri build` on each platform.
-2. `npm run release:manifest` records checksums; add `--base-url https://…` once artifacts are uploaded to mark them published (`--signed`, `--notarized` only when true).
-3. The download page reads `apps/web/src/releases/manifest.json` and never links to unpublished builds.
+Releases are built by GitHub Actions (`.github/workflows/release.yml`) and served from
+`github.com/houssambelkasmi11-prog/sorte/releases`. Installed apps check
+`releases/latest/download/latest.json` on launch and every 6 hours, show an in-app banner, and
+install only after the user clicks **Update**. Every update is verified against the public key in
+`tauri.conf.json`; an unsigned or tampered update is rejected.
 
-Signing needs your own credentials, supplied via CI secrets — never committed: Apple Developer ID + notarisation (`APPLE_CERTIFICATE`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`), Windows Authenticode certificate.
+**One-time setup** — in the GitHub repo → Settings → Secrets and variables → Actions:
+- `TAURI_SIGNING_PRIVATE_KEY`: contents of `~/.tauri/sorte.key` (`pbcopy < ~/.tauri/sorte.key`)
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: empty unless you regenerate the key with a password
+- Optional, for Gatekeeper-clean macOS builds: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
+  `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`
+
+Back up `~/.tauri/sorte.key`. If it's lost, existing installs can't verify new updates and must be reinstalled manually.
+
+**Each release:**
+```bash
+npm run release:version 0.2.0
+git commit -am "Release v0.2.0" && git tag v0.2.0 && git push --follow-tags
+```
+The workflow drafts a release with macOS (Apple silicon) and Windows (x64) installers plus `latest.json`.
+Review it and click **Publish** — only then do installed apps see the update. Then refresh the website's
+download page with `npm run release:manifest -- --base-url https://github.com/houssambelkasmi11-prog/sorte/releases/download/v0.2.0`.
+
+Local signed build: `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/sorte.key)" npm run tauri build`.
 
 ## Known limitations
 

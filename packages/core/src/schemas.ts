@@ -114,6 +114,7 @@ export const ApplicationSettingsSchema = z.object({
     .default({}),
   rules: RulesProfileSchema,
   imageMaxEdge: z.number().int().min(256).max(2048).default(1024),
+  updates: z.object({ autoCheck: z.boolean().default(true) }).default({}),
   reducedMotion: z.enum(["system", "on", "off"]).default("system"),
 });
 export type ApplicationSettings = z.infer<typeof ApplicationSettingsSchema>;

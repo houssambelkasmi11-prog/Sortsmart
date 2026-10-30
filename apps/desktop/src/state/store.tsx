@@ -18,6 +18,7 @@ import {
 } from "@sorte/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { readStore, transport, writeStore } from "../platform";
+import { checkForUpdate, describeUpdateError, type UpdateState } from "../platform/updates";
 
 export type Screen = "overview" | "sort" | "providers" | "local" | "devices" | "history" | "settings";
 
@@ -44,6 +45,9 @@ interface AppState {
   refreshDevice(): Promise<void>;
   cloudRequests: number;
   bumpStats(): void;
+  update: UpdateState;
+  setUpdate(u: UpdateState): void;
+  runUpdateCheck(opts?: { silent?: boolean }): Promise<void>;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -64,6 +68,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<SortingDevice | null>(null);
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
   const [, setTick] = useState(0);
+  const [update, setUpdate] = useState<UpdateState>({ kind: "idle" });
+  const updateRef = useRef(update);
+  updateRef.current = update;
+
+  // Silent checks never surface errors; a manual check from Settings does.
+  const runUpdateCheck = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    const busy = ["checking", "downloading", "ready"].includes(updateRef.current.kind);
+    if (busy) return;
+    setUpdate({ kind: "checking" });
+    try {
+      const u = await checkForUpdate();
+      setUpdate(u ? { kind: "available", update: u } : { kind: "current", checkedAt: new Date() });
+    } catch (e) {
+      setUpdate(silent ? { kind: "idle" } : { kind: "error", message: describeUpdateError(e) });
+    }
+  }, []);
 
   // Load persisted state once.
   useEffect(() => {
@@ -181,6 +201,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshDevice,
     cloudRequests: engine.cloudRequestCount,
     bumpStats: () => setTick((t) => t + 1),
+    update,
+    setUpdate,
+    runUpdateCheck,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

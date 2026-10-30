@@ -3,10 +3,13 @@ import { Button, StatusPill } from "@sorte/ui";
 import { useEffect, useState } from "react";
 import { Dialog, Field, Section } from "../components/common";
 import { storeLocation } from "../platform";
+import { appVersion, updatesSupported } from "../platform/updates";
 import { MODE_META, useApp } from "../state/store";
 
 export function Settings() {
-  const { settings, updateSettings, providers, engine, logs, bumpStats } = useApp();
+  const { settings, updateSettings, providers, engine, logs, bumpStats, update, runUpdateCheck } = useApp();
+  const [version, setVersion] = useState("");
+  useEffect(() => void appVersion().then(setVersion), []);
   const [disclosure, setDisclosure] = useState(false);
   const [location, setLocation] = useState("");
   useEffect(() => void storeLocation().then(setLocation), []);
@@ -167,6 +170,39 @@ export function Settings() {
             <option value="off">Full motion</option>
           </select>
         </Field>
+      </Section>
+
+      <Section title={`Updates · v${version}`}>
+        <div className="toggle-row">
+          <div>
+            <p className="s-label">Check automatically</p>
+            <p className="s-hint">On launch and every 6 hours. You choose when to install.</p>
+          </div>
+          <input
+            type="checkbox"
+            className="s-switch"
+            checked={settings.updates.autoCheck}
+            disabled={!updatesSupported}
+            onChange={(e) => updateSettings((s) => ({ ...s, updates: { autoCheck: e.target.checked } }))}
+            aria-label="Check for updates automatically"
+          />
+        </div>
+        <div className="row">
+          <Button size="sm" disabled={!updatesSupported || update.kind === "checking" || update.kind === "downloading"} onClick={() => void runUpdateCheck()}>
+            {update.kind === "checking" ? "Checking…" : "Check now"}
+          </Button>
+          <span className="s-hint">
+            {!updatesSupported
+              ? "Desktop app only."
+              : update.kind === "current"
+                ? `Up to date · ${update.checkedAt.toLocaleTimeString()}`
+                : update.kind === "available"
+                  ? `${update.update.version} available`
+                  : update.kind === "error"
+                    ? update.message
+                    : ""}
+          </span>
+        </div>
       </Section>
 
       <Section

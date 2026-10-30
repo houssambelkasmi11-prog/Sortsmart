@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "SORTÉ",
+        "title": "SORT\u00c9",
         "width": 1280,
         "height": 820,
         "minWidth": 900,
@@ -30,18 +30,44 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg", "nsis"],
+    "targets": [
+      "app",
+      "dmg",
+      "nsis"
+    ],
     "category": "Utility",
     "shortDescription": "Intelligent recycling",
-    "copyright": "© SORTÉ",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "copyright": "\u00a9 SORT\u00c9",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "macOS": {
       "minimumSystemVersion": "11.0",
       "entitlements": "Entitlements.plist"
     },
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper" },
-      "nsis": { "installMode": "currentUser" }
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhCRjFFQTdDRkQ3QUQ4Q0IKUldUTDJIcjlmT3J4aTdzaHNpMWVDY2prdU80TGY5UFZMTStMdkc5Rzd6VFJLd09JUTlCdXJYdnUK",
+      "endpoints": [
+        "https://github.com/houssambelkasmi11-prog/sorte/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

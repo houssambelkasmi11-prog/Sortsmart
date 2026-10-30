@@ -1,6 +1,7 @@
 import { Insignia, StatusPill, Wordmark } from "@sorte/ui";
 import { useEffect } from "react";
 import { isDesktop } from "./platform";
+import { UpdateBanner } from "./components/UpdateBanner";
 import { Devices } from "./screens/Devices";
 import { History } from "./screens/History";
 import { LocalModels } from "./screens/LocalModels";
@@ -67,6 +68,7 @@ export function App() {
             </StatusPill>
           </button>
         </header>
+        <UpdateBanner />
         {notices.map((n) => (
           <div key={n} className="banner banner--amber" role="status">
             <span>{n}</span>
