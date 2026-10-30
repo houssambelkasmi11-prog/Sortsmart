@@ -47,7 +47,8 @@
     ],
     "macOS": {
       "minimumSystemVersion": "11.0",
-      "entitlements": "Entitlements.plist"
+      "entitlements": "Entitlements.plist",
+      "signingIdentity": "-"
     },
     "windows": {
       "webviewInstallMode": {
@@ -63,7 +64,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhCRjFFQTdDRkQ3QUQ4Q0IKUldUTDJIcjlmT3J4aTdzaHNpMWVDY2prdU80TGY5UFZMTStMdkc5Rzd6VFJLd09JUTlCdXJYdnUK",
       "endpoints": [
-        "https://github.com/houssambelkasmi11-prog/sorte/releases/latest/download/latest.json"
+        "https://github.com/houssambelkasmi11-prog/Sortsmart/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

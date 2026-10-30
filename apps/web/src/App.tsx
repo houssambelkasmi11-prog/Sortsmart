@@ -1,4 +1,4 @@
-import { Wordmark } from "@sorte/ui";
+import { Wordmark, motionReduced } from "@sorte/ui";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -13,18 +13,29 @@ export function Layout() {
   const { pathname, hash } = useLocation();
   const [open, setOpen] = useState(false);
 
+  const [scrolled, setScrolled] = useState(false);
+
   useEffect(() => {
     setOpen(false);
-    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: motionReduced() ? "auto" : "smooth" });
     else window.scrollTo(0, 0);
   }, [pathname, hash]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useScrollReveal(pathname);
 
   return (
     <>
       <a href="#main" className="skip">
         Skip to content
       </a>
-      <header className="nav" data-open={open}>
+      <header className="nav" data-open={open} data-scrolled={scrolled}>
         <Link to="/" className="nav__brand" aria-label="SORTÉ home">
           <Wordmark size={14} />
         </Link>
@@ -43,7 +54,9 @@ export function Layout() {
         </nav>
       </header>
       <main id="main">
-        <Outlet />
+        <div className="route" key={pathname}>
+          <Outlet />
+        </div>
       </main>
       <footer className="footer">
         <div className="footer__inner">
@@ -61,6 +74,37 @@ export function Layout() {
       </footer>
     </>
   );
+}
+
+const REVEAL =
+  ".v-title, .web-chutes, .flow, .v-more, .orbs li, .final-cta > *, .page-head > *, .cat, .pipeline__step, .ladder li, .review-case, .dl-card, .notes li, .rules, .preview, .docs__toc, .docs__body section, .section__head, .spec, .page__foot, .footer__inner";
+
+/**
+ * Elements fade and rise as they scroll into view, with a small stagger among
+ * siblings. Only armed once JS runs, so content is never hidden without it.
+ */
+function useScrollReveal(pathname: string) {
+  useEffect(() => {
+    if (motionReduced()) return;
+    const items = Array.from(document.querySelectorAll<HTMLElement>(REVEAL)).filter((el) => !el.classList.contains("is-in"));
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.classList.add("is-in");
+          io.unobserve(e.target);
+        }
+      },
+      { rootMargin: "0px 0px -8% 0px" },
+    );
+    for (const el of items) {
+      const index = el.parentElement ? Array.prototype.indexOf.call(el.parentElement.children, el) : 0;
+      el.style.setProperty("--rv", String(Math.min(index, 6)));
+      el.classList.add("rv");
+      io.observe(el);
+    }
+    return () => io.disconnect();
+  }, [pathname]);
 }
 
 export function PageHeader({ eyebrow, title, lede }: { eyebrow: string; title: React.ReactNode; lede?: React.ReactNode }) {

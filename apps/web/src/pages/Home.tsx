@@ -24,9 +24,10 @@ export function Home() {
         <h2 className="s-display v-title">Five streams.</h2>
         <div className="web-chutes">
           {CATEGORIES.map((c, i) => (
-            <Link key={c.id} to={`/sorting#${c.id}`} className="web-chute" style={{ "--c": categoryColor(c.id), "--f": FILL[i] } as React.CSSProperties}>
+            <Link key={c.id} to={`/sorting#${c.id}`} className="web-chute" style={{ "--c": categoryColor(c.id), "--f": FILL[i], "--i": i } as React.CSSProperties}>
               <span className="web-chute__mouth" />
               <span className="web-chute__fill" />
+              <span className="web-chute__token" />
               <CategoryGlyph id={c.id} size={30} color={categoryColor(c.id)} />
               <span className="web-chute__label">{c.short}</span>
             </Link>

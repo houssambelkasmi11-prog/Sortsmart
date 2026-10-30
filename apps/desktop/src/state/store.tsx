@@ -18,7 +18,8 @@ import {
 } from "@sorte/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { readStore, transport, writeStore } from "../platform";
-import { checkForUpdate, describeUpdateError, type UpdateState } from "../platform/updates";
+import { checkForUpdate, describeUpdateError, downloadUpdate, type UpdateState } from "../platform/updates";
+import type { Update } from "@tauri-apps/plugin-updater";
 
 export type Screen = "overview" | "sort" | "providers" | "local" | "devices" | "history" | "settings";
 
@@ -48,6 +49,7 @@ interface AppState {
   update: UpdateState;
   setUpdate(u: UpdateState): void;
   runUpdateCheck(opts?: { silent?: boolean }): Promise<void>;
+  startUpdateDownload(update: Update, opts?: { silent?: boolean }): Promise<void>;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -72,6 +74,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateRef = useRef(update);
   updateRef.current = update;
 
+  const autoDownloadRef = useRef(true);
+
+  const startUpdateDownload = useCallback(async (u: Update, { silent = false }: { silent?: boolean } = {}) => {
+    setUpdate({ kind: "downloading", version: u.version, received: 0, total: null });
+    try {
+      await downloadUpdate(u, (received, total) => setUpdate({ kind: "downloading", version: u.version, received, total }));
+      setUpdate({ kind: "ready", update: u });
+    } catch (e) {
+      // A failed background download just tries again at the next check.
+      setUpdate(silent ? { kind: "idle" } : { kind: "error", message: describeUpdateError(e) });
+    }
+  }, []);
+
   // Silent checks never surface errors; a manual check from Settings does.
   const runUpdateCheck = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     const busy = ["checking", "downloading", "ready"].includes(updateRef.current.kind);
@@ -79,11 +94,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUpdate({ kind: "checking" });
     try {
       const u = await checkForUpdate();
-      setUpdate(u ? { kind: "available", update: u } : { kind: "current", checkedAt: new Date() });
+      if (!u) setUpdate({ kind: "current", checkedAt: new Date() });
+      else if (autoDownloadRef.current) await startUpdateDownload(u, { silent });
+      else setUpdate({ kind: "available", update: u });
     } catch (e) {
       setUpdate(silent ? { kind: "idle" } : { kind: "error", message: describeUpdateError(e) });
     }
-  }, []);
+  }, [startUpdateDownload]);
 
   // Load persisted state once.
   useEffect(() => {
@@ -125,6 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  autoDownloadRef.current = settings.updates.autoDownload;
   const providersRef = useRef(providers);
   providersRef.current = providers;
 
@@ -204,6 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update,
     setUpdate,
     runUpdateCheck,
+    startUpdateDownload,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

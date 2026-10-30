@@ -1597,3 +1597,671 @@ button.chute:hover {
     left: 100%;
   }
 }
+
+/* ═════════ Motion layer ═════════ */
+
+/* Launch: the aperture opens, then gets out of the way. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: var(--bg-0);
+  pointer-events: none;
+  animation: splash-out 500ms var(--ease) 620ms forwards;
+}
+.splash > span {
+  grid-area: 1 / 1;
+  border-radius: 50%;
+}
+.splash__ring {
+  width: 150px;
+  height: 150px;
+  background: var(--iris);
+  -webkit-mask: radial-gradient(circle, transparent 66%, #000 67%, #000 69%, transparent 70%);
+  mask: radial-gradient(circle, transparent 66%, #000 67%, #000 69%, transparent 70%);
+  animation: splash-ring 1100ms var(--ease-expo) both;
+}
+.splash__core {
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle, #fff, var(--acid) 35%, transparent 70%);
+  animation: splash-core 1100ms var(--ease-expo) both;
+}
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes splash-ring {
+  from {
+    transform: scale(0.3) rotate(-120deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1.5) rotate(40deg);
+  }
+}
+@keyframes splash-core {
+  0% {
+    transform: scale(0);
+  }
+  55% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(9);
+    opacity: 0;
+  }
+}
+
+/* Ambient light, tinted by the AI mode. Transform-only, so it stays cheap. */
+.shell {
+  --aura: rgba(141, 144, 163, 0.1);
+}
+.shell[data-mode="local"] {
+  --aura: rgba(200, 255, 61, 0.09);
+}
+.shell[data-mode="cloud"] {
+  --aura: rgba(157, 140, 255, 0.13);
+}
+.shell[data-mode="hybrid"] {
+  --aura: rgba(255, 181, 71, 0.1);
+}
+.main {
+  position: relative;
+  overflow: hidden;
+}
+.main::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: 900px;
+  height: 900px;
+  top: -420px;
+  right: -260px;
+  pointer-events: none;
+  background: radial-gradient(closest-side, var(--aura), transparent);
+  animation: aura 22s var(--ease-in-out) infinite alternate;
+}
+@keyframes aura {
+  to {
+    transform: translate(-340px, 220px) scale(1.25);
+  }
+}
+.main > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Rail: one pill that slides between items. */
+.rail {
+  position: relative;
+  z-index: 20;
+}
+.rail__nav {
+  position: relative;
+}
+.rail__pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--acid);
+  box-shadow: 0 0 26px rgba(200, 255, 61, 0.3);
+  transform: translateY(calc(var(--idx) * 52px));
+  transition: transform 520ms var(--spring);
+}
+.rail__item {
+  position: relative;
+  z-index: 1;
+  transition: color 260ms var(--ease), background var(--d-2) var(--ease), transform 420ms var(--spring);
+}
+.rail__item[aria-current="page"] {
+  background: transparent;
+  box-shadow: none;
+}
+.rail__item:hover {
+  transform: scale(1.08);
+}
+.rail__item[aria-current="page"]:hover {
+  background: transparent;
+}
+.rail__item:active {
+  transform: scale(0.9);
+  transition-duration: 80ms;
+}
+.rail__tip {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  padding: 5px 11px;
+  border-radius: var(--r-1);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  color: var(--ivory);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-8px, -50%);
+  transition: opacity 160ms var(--ease), transform 340ms var(--spring);
+}
+.rail__item:hover .rail__tip,
+.rail__item:focus-visible .rail__tip {
+  display: block;
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+.rail__item span.rail__tip {
+  display: block;
+}
+.topbar__title {
+  animation: title-in 460ms var(--ease-expo) backwards;
+}
+@keyframes title-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Screen transitions, with children entering one after another. */
+.screen {
+  animation: screen-in 560ms var(--ease-expo) backwards;
+}
+.screen[data-dir="down"] {
+  --from: -18px;
+}
+.screen[data-leaving="true"] {
+  animation: screen-out 130ms var(--ease) forwards;
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--from, 18px));
+  }
+}
+@keyframes screen-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.grid > .card,
+.hud > *,
+.overview > .alert,
+.overview > .cta,
+.overview > .trail,
+.sort__top > * {
+  animation: child-in 680ms var(--ease-expo) backwards;
+}
+.grid > .card:nth-child(2),
+.hud > :nth-child(2),
+.sort__top > :nth-child(2) {
+  animation-delay: 70ms;
+}
+.grid > .card:nth-child(3),
+.hud > :nth-child(3) {
+  animation-delay: 140ms;
+}
+.grid > .card:nth-child(4) {
+  animation-delay: 210ms;
+}
+.grid > .card:nth-child(n + 5) {
+  animation-delay: 280ms;
+}
+.overview > .cta {
+  animation-delay: 460ms;
+}
+@keyframes child-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* Cards light up softly under the pointer. */
+.card {
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--d-3) var(--ease);
+}
+.card:hover {
+  border-color: var(--line-strong);
+}
+.card::before,
+.chute::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 0%), rgba(214, 222, 255, 0.07), transparent 70%);
+  transition: opacity var(--d-3) var(--ease);
+}
+.card:hover::before,
+.chute:hover::after {
+  opacity: 1;
+}
+.card > * {
+  position: relative;
+}
+
+/* Chutes */
+.chute {
+  animation: chute-in 760ms var(--ease-expo) backwards;
+  animation-delay: calc(var(--i) * 65ms + 80ms);
+  transition:
+    border-color var(--d-3) var(--ease),
+    opacity 520ms var(--ease),
+    box-shadow 700ms var(--ease-expo),
+    transform 480ms var(--spring);
+}
+@keyframes chute-in {
+  from {
+    opacity: 0;
+    transform: translateY(46px) scale(0.97);
+  }
+}
+button.chute:disabled {
+  cursor: default;
+}
+button.chute:not(:disabled):hover {
+  transform: translateY(-6px);
+  border-color: var(--c);
+}
+button.chute:not(:disabled):active {
+  transform: translateY(-1px) scale(0.98);
+  transition-duration: 80ms;
+}
+button.chute:disabled:hover {
+  border-color: var(--line);
+  transform: none;
+}
+.chute[data-active="true"]:disabled:hover {
+  border-color: var(--c);
+  transform: translateY(-4px);
+}
+.chute[data-active="true"] {
+  transform: translateY(-4px);
+}
+.chutes[data-locked="true"] .chute {
+  opacity: 0.25;
+  filter: saturate(0.3);
+}
+.chute__fill {
+  height: 100%;
+  will-change: transform;
+  transition: transform 1100ms var(--ease-expo);
+  transition-delay: calc(var(--i) * 45ms);
+}
+.chute[data-dropping="true"] .chute__fill {
+  /* The liquid rises when the token lands. */
+  transition-delay: 520ms;
+  transition-duration: 1000ms;
+}
+.chute__wave {
+  position: absolute;
+  left: 0;
+  top: -7px;
+  width: 200%;
+  height: 8px;
+  opacity: 0;
+  background: var(--c);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><path d='M0 8V4C20 0 40 0 60 4S100 8 120 4V8Z'/></svg>") repeat-x 0 0 / 50% 100%;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><path d='M0 8V4C20 0 40 0 60 4S100 8 120 4V8Z'/></svg>") repeat-x 0 0 / 50% 100%;
+  transition: opacity 600ms var(--ease);
+  animation: wave 3.2s linear infinite;
+}
+.chute[data-active="true"] .chute__wave {
+  opacity: 0.8;
+}
+@keyframes wave {
+  to {
+    transform: translateX(-50%);
+  }
+}
+/* The token falls down the space above the liquid; % is relative to that space. */
+.chute__drop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.chute__token {
+  position: absolute;
+  bottom: 0;
+  top: auto;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: 0 0 0 -9px;
+  border-radius: 6px;
+  background: var(--c);
+  box-shadow: 0 0 24px var(--c);
+  transform-origin: center;
+  animation: token-fall 620ms cubic-bezier(0.5, 0, 0.9, 0.5) both;
+}
+@keyframes token-fall {
+  0% {
+    top: 8px;
+    bottom: auto;
+    transform: rotate(-30deg) scale(0.6);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    top: calc(100% - 12px);
+    bottom: auto;
+    transform: rotate(150deg) scale(0.75);
+    opacity: 0;
+  }
+}
+.chute__splash {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 70%;
+  height: 14px;
+  margin-left: -35%;
+  border-radius: 50%;
+  border: 1.5px solid var(--c);
+  opacity: 0;
+  animation: splash 760ms var(--ease-expo) 560ms;
+}
+@keyframes splash {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.15);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+.chute__glyph {
+  transition: transform 520ms var(--spring);
+}
+button.chute:not(:disabled):hover .chute__glyph,
+.chute[data-active="true"] .chute__glyph {
+  transform: translateY(-3px) scale(1.14);
+}
+.chute__label {
+  transition: color var(--d-3) var(--ease);
+}
+
+/* Lens viewport */
+.well {
+  transition: box-shadow 620ms var(--ease-expo), transform 620ms var(--spring);
+}
+.well[data-drag="true"] {
+  transform: scale(1.04);
+  box-shadow: 0 0 0 2px var(--acid), 0 0 90px -10px var(--acid);
+}
+.well[data-state="running"] {
+  transform: scale(0.985);
+}
+.well__img--reveal {
+  animation: iris-open 900ms var(--ease-expo) both;
+}
+@keyframes iris-open {
+  from {
+    clip-path: circle(0% at 50% 50%);
+    transform: scale(1.18);
+    filter: brightness(1.7);
+  }
+  to {
+    clip-path: circle(75% at 50% 50%);
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+.well[data-state="running"] .well__img {
+  filter: saturate(0.5) brightness(0.75);
+  transition: filter 500ms var(--ease);
+}
+.well__plus {
+  transition: transform 520ms var(--spring), border-color var(--d-2) var(--ease);
+}
+.well__empty:hover .well__plus,
+.well[data-drag="true"] .well__plus {
+  transform: scale(1.18) rotate(90deg);
+  border-color: var(--acid);
+}
+.well__pulse {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  border: 1px solid var(--tint);
+  pointer-events: none;
+  animation: well-pulse 1.8s var(--ease-expo) infinite;
+}
+.well__pulse--2 {
+  animation-delay: 0.6s;
+}
+@keyframes well-pulse {
+  from {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(0.15);
+    opacity: 0;
+  }
+}
+.well__flash {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, transparent 40%, var(--hit) 100%);
+  animation: well-flash 1100ms var(--ease-expo) both;
+}
+@keyframes well-flash {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.icon-btn {
+  transition: background var(--d-2) var(--ease), color var(--d-2) var(--ease), transform 380ms var(--spring);
+}
+.icon-btn:hover {
+  transform: scale(1.1);
+}
+.icon-btn:active {
+  transform: scale(0.88);
+  transition-duration: 80ms;
+}
+.go {
+  transition: transform 420ms var(--spring), filter var(--d-2) var(--ease), box-shadow 500ms var(--ease-expo), opacity var(--d-2) var(--ease);
+}
+.go:hover:not(:disabled) {
+  transform: scale(1.14);
+  box-shadow: 0 0 34px rgba(200, 255, 61, 0.55);
+}
+.go:active:not(:disabled) {
+  transform: scale(0.9);
+  transition-duration: 80ms;
+}
+.cta {
+  transition: transform 420ms var(--spring), box-shadow 500ms var(--ease-expo);
+}
+.cta:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 0 8px rgba(200, 255, 61, 0.08), 0 0 60px rgba(200, 255, 61, 0.35);
+}
+
+/* Verdict */
+.verdict__word {
+  animation: none;
+}
+.verdict__late {
+  animation: child-in 700ms var(--ease-expo) 360ms backwards;
+}
+.verdict__num {
+  animation: child-in 700ms var(--ease-expo) 120ms backwards;
+}
+.verdict__ghost {
+  animation: child-in 700ms var(--ease-expo) backwards;
+}
+.link {
+  transition: color var(--d-2) var(--ease), text-decoration-color var(--d-3) var(--ease);
+}
+.link:hover {
+  text-decoration-color: var(--acid);
+}
+/* Height animation without measuring. */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 480ms var(--ease-expo), opacity 320ms var(--ease);
+}
+.collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.collapse__in {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Overview */
+.orb {
+  transition: transform 560ms var(--spring), box-shadow 700ms var(--ease-expo);
+}
+.orb:hover {
+  transform: scale(1.1);
+}
+.orb__core {
+  animation: orb-breathe 4.2s var(--ease-in-out) infinite;
+}
+@keyframes orb-breathe {
+  50% {
+    transform: scale(1.08);
+    filter: brightness(1.2);
+  }
+}
+.trail__dot {
+  animation: dot-in 460ms var(--spring) backwards;
+  animation-delay: calc(var(--i) * 18ms + 300ms);
+  transition: transform 300ms var(--spring);
+}
+.trail__dot:hover {
+  transform: scale(1.7);
+}
+@keyframes dot-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+.hud__device {
+  transition: border-color var(--d-2) var(--ease), color var(--d-2) var(--ease), transform 380ms var(--spring);
+}
+.hud__device:hover {
+  border-color: var(--line-strong);
+  color: var(--ivory);
+  transform: translateY(-1px);
+}
+.led {
+  transition: background 500ms var(--ease), box-shadow 500ms var(--ease);
+}
+.dist__fill {
+  transition: width 1000ms var(--ease-expo);
+}
+
+/* Lists, tables, dialogs, banners */
+.list__item {
+  transition: background var(--d-2) var(--ease), border-color var(--d-2) var(--ease), transform 380ms var(--spring);
+}
+.list__item:hover {
+  transform: translateX(3px);
+}
+.table tbody tr {
+  animation: child-in 520ms var(--ease-expo) backwards;
+  transition: background var(--d-2) var(--ease);
+}
+.table tbody tr:nth-child(1) { animation-delay: 60ms; }
+.table tbody tr:nth-child(2) { animation-delay: 100ms; }
+.table tbody tr:nth-child(3) { animation-delay: 140ms; }
+.table tbody tr:nth-child(4) { animation-delay: 180ms; }
+.table tbody tr:nth-child(5) { animation-delay: 220ms; }
+.table tbody tr:nth-child(n + 6) { animation-delay: 260ms; }
+.table tbody tr:hover {
+  background: rgba(214, 222, 255, 0.025);
+}
+.mode-opt {
+  transition: border-color var(--d-2) var(--ease), background var(--d-3) var(--ease), transform 420ms var(--spring);
+}
+.mode-opt:hover {
+  transform: translateX(3px);
+}
+.mode-opt:active {
+  transform: scale(0.985);
+  transition-duration: 80ms;
+}
+.chip {
+  transition: all var(--d-2) var(--ease), transform 380ms var(--spring);
+}
+.chip:hover {
+  transform: translateY(-2px);
+}
+.dialog[open] {
+  animation: dialog-in 520ms var(--ease-expo);
+}
+.dialog[open]::backdrop {
+  animation: fade-in 360ms var(--ease);
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.95);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.banner,
+.alert,
+.error-box,
+p.ok,
+p.field-error {
+  animation: child-in 460ms var(--ease-expo) backwards;
+}
+.processing {
+  animation: fade-in 400ms var(--ease);
+}
+.update {
+  animation: banner-in 640ms var(--spring) backwards;
+}
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.98);
+  }
+}
+.update__btn {
+  transition: transform 360ms var(--spring), box-shadow 400ms var(--ease-expo);
+}
+.update__btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 22px rgba(200, 255, 61, 0.4);
+}

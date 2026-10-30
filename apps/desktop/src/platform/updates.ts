@@ -14,7 +14,7 @@ export type UpdateState =
   | { kind: "current"; checkedAt: Date }
   | { kind: "available"; update: Update }
   | { kind: "downloading"; version: string; received: number; total: number | null }
-  | { kind: "ready"; version: string }
+  | { kind: "ready"; update: Update }
   | { kind: "error"; message: string };
 
 export const updatesSupported = isDesktop;
@@ -28,17 +28,21 @@ export async function checkForUpdate(): Promise<Update | null> {
   return check({ timeout: 15_000 });
 }
 
-export async function installUpdate(update: Update, onProgress: (received: number, total: number | null) => void): Promise<void> {
+export async function downloadUpdate(update: Update, onProgress: (received: number, total: number | null) => void): Promise<void> {
   let total: number | null = null;
   let received = 0;
-  await update.downloadAndInstall((e) => {
+  await update.download((e) => {
     if (e.event === "Started") total = e.data.contentLength ?? null;
     if (e.event === "Progress") received += e.data.chunkLength;
     onProgress(received, total);
   });
 }
 
-export const restartApp = () => relaunch();
+/** Installs a downloaded update (its signature was verified on download) and restarts. */
+export async function installAndRestart(update: Update): Promise<void> {
+  await update.install();
+  await relaunch();
+}
 
 export function describeUpdateError(err: unknown): string {
   const msg = String((err as Error)?.message ?? err);

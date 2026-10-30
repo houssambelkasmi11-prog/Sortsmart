@@ -1,3 +1,4 @@
+export * from "./motion";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Tone = "neutral" | "sage" | "amber" | "lavender" | "danger";

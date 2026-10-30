@@ -1,5 +1,5 @@
 import { CATEGORIES, type CategoryId } from "@sorte/core";
-import { categoryColor } from "@sorte/ui";
+import { CountUp, categoryColor } from "@sorte/ui";
 import { Chutes } from "../components/Chutes";
 import { MODE_META, useApp } from "../state/store";
 
@@ -57,9 +57,9 @@ export function Overview() {
 
       {history.length > 0 && (
         <div className="trail" aria-label="Recent items">
-          {history.slice(0, 40).map((r) => {
+          {history.slice(0, 40).map((r, i) => {
             const c = r.userCategory ?? r.result.category;
-            return <span key={r.id} className="trail__dot" style={{ background: c ? categoryColor(c) : "transparent" }} data-review={!c} title={`${r.result.material} · ${new Date(r.result.timestamp).toLocaleTimeString()}`} />;
+            return <span key={r.id} className="trail__dot" style={{ background: c ? categoryColor(c) : "transparent", "--i": i } as React.CSSProperties} data-review={!c} title={`${r.result.material} · ${new Date(r.result.timestamp).toLocaleTimeString()}`} />;
           })}
         </div>
       )}
@@ -74,7 +74,9 @@ export function Overview() {
 function Stat({ n, label }: { n: number; label: string }) {
   return (
     <div className="stat">
-      <span className="stat__n">{n}</span>
+      <span className="stat__n">
+        <CountUp value={n} />
+      </span>
       <span className="stat__l">{label}</span>
     </div>
   );

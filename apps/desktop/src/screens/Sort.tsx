@@ -1,5 +1,5 @@
 import { AiModeSchema, buildSortCommand, type AiMode, type CategoryId, type ClassifyOutcome, type ImageInput, type SortExecutionResult } from "@sorte/core";
-import { categoryColor } from "@sorte/ui";
+import { CountUp, RevealText, categoryColor } from "@sorte/ui";
 import { useEffect, useRef, useState } from "react";
 import { Chutes } from "../components/Chutes";
 import { categoryLabel } from "../components/common";
@@ -18,6 +18,7 @@ export function Sort() {
   const [execution, setExecution] = useState<SortExecutionResult | null>(null);
   const [camera, setCamera] = useState(false);
   const [why, setWhy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -96,10 +97,16 @@ export function Sort() {
         <div
           className="well"
           data-state={phase.kind}
-          style={{ "--tint": tint } as React.CSSProperties}
-          onDragOver={(e) => e.preventDefault()}
+          data-drag={dragging}
+          style={{ "--tint": tint, "--hit": finalCategory ? categoryColor(finalCategory) : "var(--amber)" } as React.CSSProperties}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
+            setDragging(false);
             onFile(e.dataTransfer.files[0]);
           }}
         >
@@ -112,14 +119,21 @@ export function Sort() {
               onClose={() => setCamera(false)}
             />
           ) : image ? (
-            <img src={image.previewUrl} alt="Item" className="well__img" />
+            <img key={image.previewUrl} src={image.previewUrl} alt="Item" className="well__img well__img--reveal" />
           ) : (
             <button className="well__empty" onClick={() => fileRef.current?.click()}>
               <span className="well__plus" aria-hidden />
               <span>Drop an item</span>
             </button>
           )}
-          {phase.kind === "running" && <span className="well__scan" aria-hidden />}
+          {phase.kind === "running" && (
+            <>
+              <span className="well__scan" aria-hidden />
+              <span className="well__pulse" aria-hidden />
+              <span className="well__pulse well__pulse--2" aria-hidden />
+            </>
+          )}
+          {result && <span key={result.id} className="well__flash" aria-hidden />}
           <div className="well__bar">
             <IconBtn label="Choose image" onClick={() => fileRef.current?.click()} d="M4 16l4-4 3 3 5-6 4 5M4 5h16v14H4z" />
             {"mediaDevices" in navigator && <IconBtn label="Camera" onClick={() => setCamera(true)} d="M4 8h3l2-2h6l2 2h3v11H4zM12 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" />}
@@ -170,33 +184,35 @@ export function Sort() {
           {result && (
             <>
               <h2 className="verdict__word" style={{ color: hazardous && !userCategory ? "var(--danger)" : finalCategory ? categoryColor(finalCategory) : "var(--amber)" }}>
-                {hazardous && !userCategory ? "Special drop-off" : review ? "Pick a chute" : categoryLabel(finalCategory)}
+                <RevealText text={hazardous && !userCategory ? "Special drop-off" : review ? "Pick a chute" : categoryLabel(finalCategory)} />
               </h2>
               <p className="verdict__num">
-                {Math.round(result.confidence * 100)}
+                <CountUp value={result.confidence * 100} ms={1100} />
                 <small>%</small>
                 {result.inference === "mock" && <span className="tag">simulated</span>}
                 {userCategory && <span className="tag tag--sage">confirmed</span>}
               </p>
-              <p className="verdict__meta">
+              <p className="verdict__meta verdict__late">
                 {result.material} · {result.location} · {result.cacheHit ? "cached" : `${result.latencyMs} ms`}
               </p>
-              <button className="link" onClick={() => setWhy((w) => !w)} aria-expanded={why}>
+              <button className="link verdict__late" onClick={() => setWhy((w) => !w)} aria-expanded={why}>
                 {why ? "Hide" : "Why?"}
               </button>
-              {why && (
-                <div className="why">
-                  <p>{result.reasoning}</p>
-                  {[...result.reviewReasons, ...result.warnings].map((w) => (
-                    <p key={w} className="why__warn">
-                      {w}
+              <div className="collapse" data-open={why} aria-hidden={!why}>
+                <div className="collapse__in">
+                  <div className="why">
+                    <p>{result.reasoning}</p>
+                    {[...result.reviewReasons, ...result.warnings].map((w) => (
+                      <p key={w} className="why__warn">
+                        {w}
+                      </p>
+                    ))}
+                    <p className="why__note">
+                      Self-reported by {result.model}, not calibrated. Threshold {Math.round(settings.confidenceThreshold * 100)}%.
                     </p>
-                  ))}
-                  <p className="why__note">
-                    Self-reported by {result.model}, not calibrated. Threshold {Math.round(settings.confidenceThreshold * 100)}%.
-                  </p>
+                  </div>
                 </div>
-              )}
+              </div>
               {device && deviceStatus && (
                 <div className="send">
                   <button className="pill-btn" disabled={!command?.ok || deviceStatus.state !== "ready"} onClick={sendToDevice} title={command && !command.ok ? command.reason : undefined}>
@@ -210,7 +226,7 @@ export function Sort() {
         </div>
       </div>
 
-      <Chutes active={finalCategory} dropKey={`${result?.id}-${finalCategory}`} pickable={!!result && !hazardous} onPick={pick} />
+      <Chutes active={finalCategory} dropKey={`${result?.id}-${finalCategory}`} pickable={!!result && !hazardous} locked={hazardous && !userCategory} onPick={pick} />
     </div>
   );
 }

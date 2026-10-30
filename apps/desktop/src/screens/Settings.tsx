@@ -176,15 +176,29 @@ export function Settings() {
         <div className="toggle-row">
           <div>
             <p className="s-label">Check automatically</p>
-            <p className="s-hint">On launch and every 6 hours. You choose when to install.</p>
+            <p className="s-hint">On launch and every 6 hours.</p>
           </div>
           <input
             type="checkbox"
             className="s-switch"
             checked={settings.updates.autoCheck}
             disabled={!updatesSupported}
-            onChange={(e) => updateSettings((s) => ({ ...s, updates: { autoCheck: e.target.checked } }))}
+            onChange={(e) => updateSettings((s) => ({ ...s, updates: { ...s.updates, autoCheck: e.target.checked } }))}
             aria-label="Check for updates automatically"
+          />
+        </div>
+        <div className="toggle-row">
+          <div>
+            <p className="s-label">Download automatically</p>
+            <p className="s-hint">Installs when you restart.</p>
+          </div>
+          <input
+            type="checkbox"
+            className="s-switch"
+            checked={settings.updates.autoDownload}
+            disabled={!updatesSupported}
+            onChange={(e) => updateSettings((s) => ({ ...s, updates: { ...s.updates, autoDownload: e.target.checked } }))}
+            aria-label="Download updates automatically"
           />
         </div>
         <div className="row">
@@ -198,6 +212,10 @@ export function Settings() {
                 ? `Up to date · ${update.checkedAt.toLocaleTimeString()}`
                 : update.kind === "available"
                   ? `${update.update.version} available`
+                  : update.kind === "downloading"
+                    ? `Downloading ${update.version}…`
+                    : update.kind === "ready"
+                      ? `${update.update.version} ready`
                   : update.kind === "error"
                     ? update.message
                     : ""}

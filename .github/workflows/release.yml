@@ -1,21 +1,40 @@
-# Builds signed installers + updater artifacts and drafts a GitHub Release.
-# Trigger: push a tag like v0.2.0 (see `npm run release:version`).
-# The release is created as a DRAFT: review it, then Publish — only published
-# releases are served at releases/latest/download/latest.json to the apps.
+# Every push to main that touches the app publishes a signed release, and
+# installed apps pick it up through latest.json. The release stays a draft
+# until every platform has built, so apps never see a half-finished one.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "apps/web/**"
+      - ".gitattributes"
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          base=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version.split('.').slice(0,2).join('.')")
+          echo "version=$base.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - platform: macos-latest
@@ -44,26 +63,29 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run typecheck
+      - run: node scripts/bump-version.mjs ${{ needs.version.outputs.version }}
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Update signing (required). Private key never lives in the repo.
+          # Update signing (required). The private key never lives in the repo.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Apple code signing + notarisation (optional until you have a Developer ID).
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # With an Apple Developer ID, add APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
+          # APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID here.
         with:
           projectPath: apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: SORTÉ ${{ github.ref_name }}
-          releaseBody: Download the installer for your platform below. Existing installs will offer this update in-app once the release is published.
+          tagName: v${{ needs.version.outputs.version }}
+          releaseName: SORTÉ v${{ needs.version.outputs.version }}
+          releaseBody: ${{ github.event.head_commit.message }}
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release edit "v${{ needs.version.outputs.version }}" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

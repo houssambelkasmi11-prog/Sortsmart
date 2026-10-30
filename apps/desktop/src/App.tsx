@@ -1,5 +1,6 @@
 import { Insignia, StatusPill, Wordmark } from "@sorte/ui";
-import { useEffect } from "react";
+import { motionReduced } from "@sorte/ui";
+import { useEffect, useRef, useState } from "react";
 import { isDesktop } from "./platform";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { Devices } from "./screens/Devices";
@@ -33,20 +34,74 @@ export function App() {
     else document.documentElement.dataset.motion = r === "on" ? "reduced" : "full";
   }, [settings.reducedMotion]);
 
+  // Screen changes: quick exit, then the new screen enters in the direction of travel.
+  const [shown, setShown] = useState(screen);
+  const [leaving, setLeaving] = useState(false);
+  const [dir, setDir] = useState<"up" | "down">("up");
+  const contentRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (screen === shown) return;
+    const index = (s: Screen) => NAV.findIndex((n) => n.id === s);
+    setDir(index(screen) > index(shown) ? "up" : "down");
+    if (motionReduced()) {
+      setShown(screen);
+      return;
+    }
+    setLeaving(true);
+    const t = setTimeout(() => {
+      setShown(screen);
+      setLeaving(false);
+      contentRef.current?.scrollTo(0, 0);
+    }, 130);
+    return () => clearTimeout(t);
+  }, [screen, shown]);
+
+  // Cards and chutes pick up a soft highlight under the pointer.
+  useEffect(() => {
+    let frame = 0;
+    const onMove = (e: PointerEvent) => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const el = (e.target as Element | null)?.closest?.<HTMLElement>(".card, .chute");
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        el.style.setProperty("--my", `${e.clientY - r.top}px`);
+      });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  const [splash, setSplash] = useState(true);
+
   if (!ready) return <div className="boot" aria-busy="true" />;
 
   return (
-    <div className="shell">
+    <div className="shell" data-mode={settings.mode}>
+      {splash && (
+        <div className="splash" aria-hidden onAnimationEnd={(e) => e.target === e.currentTarget && setSplash(false)}>
+          <span className="splash__ring" />
+          <span className="splash__core" />
+        </div>
+      )}
       <aside className="rail" aria-label="Main navigation">
         <div className="rail__brand" title="SORTÉ">
           <Insignia size={22} />
         </div>
-        <nav className="rail__nav">
+        <nav className="rail__nav" style={{ "--idx": Math.max(0, NAV.findIndex((n) => n.id === screen)) } as React.CSSProperties}>
+          <span className="rail__pill" aria-hidden />
           {NAV.map((n) => (
-            <button key={n.id} className="rail__item" aria-current={screen === n.id ? "page" : undefined} onClick={() => go(n.id)} title={n.label} aria-label={n.label}>
+            <button key={n.id} className="rail__item" aria-current={screen === n.id ? "page" : undefined} onClick={() => go(n.id)} aria-label={n.label}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d={n.icon} />
               </svg>
+              <span className="rail__tip" aria-hidden>
+                {n.label}
+              </span>
             </button>
           ))}
         </nav>
@@ -59,7 +114,9 @@ export function App() {
 
       <div className="main">
         <header className="topbar" data-tauri-drag-region>
-          <h1 className="topbar__title">{NAV.find((n) => n.id === screen)?.label}</h1>
+          <h1 className="topbar__title" key={shown}>
+            {NAV.find((n) => n.id === shown)?.label}
+          </h1>
           <Wordmark size={11} />
           <button className="topbar__mode" onClick={() => go("settings")} title={mode.description} aria-label={`AI mode: ${mode.label}. ${mode.description}`}>
             <StatusPill tone={mode.tone}>
@@ -77,14 +134,16 @@ export function App() {
             </button>
           </div>
         ))}
-        <main className="content" id="content">
-          {screen === "overview" && <Overview />}
-          {screen === "sort" && <Sort />}
-          {screen === "providers" && <Providers />}
-          {screen === "local" && <LocalModels />}
-          {screen === "devices" && <Devices />}
-          {screen === "history" && <History />}
-          {screen === "settings" && <Settings />}
+        <main className="content" id="content" ref={contentRef}>
+          <div className="screen" key={shown} data-dir={dir} data-leaving={leaving}>
+            {shown === "overview" && <Overview />}
+            {shown === "sort" && <Sort />}
+            {shown === "providers" && <Providers />}
+            {shown === "local" && <LocalModels />}
+            {shown === "devices" && <Devices />}
+            {shown === "history" && <History />}
+            {shown === "settings" && <Settings />}
+          </div>
         </main>
       </div>
     </div>

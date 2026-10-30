@@ -32,30 +32,27 @@ npm run tauri build      # installers for this OS → apps/desktop/src-tauri/tar
 - **Devices** (`packages/core/src/device`): transport-independent `SortingDevice`. Only a labelled simulator exists; commands require a review-free result or a person's decision. Accepted, acknowledged and physically verified are reported separately.
 - **Security boundary**: the desktop webview has a strict CSP and no network access. All HTTP goes through Rust (`src-tauri/src/http.rs`), which validates URLs/headers, follows no redirects, and attaches keys from the OS credential store only to the origin they were saved for. The UI only ever sees the last 4 key characters. The website has no keys and no provider access.
 
-## Releases & updates
+## Releases & auto-update
 
-Releases are built by GitHub Actions (`.github/workflows/release.yml`) and served from
-`github.com/houssambelkasmi11-prog/sorte/releases`. Installed apps check
-`releases/latest/download/latest.json` on launch and every 6 hours, show an in-app banner, and
-install only after the user clicks **Update**. Every update is verified against the public key in
-`tauri.conf.json`; an unsigned or tampered update is rejected.
+Every push to `main` that touches the app builds and publishes a new release automatically
+(`.github/workflows/release.yml`): macOS (Apple silicon) and Windows (x64) installers plus `latest.json`,
+versioned `major.minor.<run number>`. The release only goes public after both platforms succeed.
+Website and Markdown-only pushes don't trigger a release.
 
-**One-time setup** — in the GitHub repo → Settings → Secrets and variables → Actions:
-- `TAURI_SIGNING_PRIVATE_KEY`: contents of `~/.tauri/sorte.key` (`pbcopy < ~/.tauri/sorte.key`)
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: empty unless you regenerate the key with a password
-- Optional, for Gatekeeper-clean macOS builds: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
-  `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`
+Installed apps check `github.com/houssambelkasmi11-prog/Sortsmart/releases/latest/download/latest.json`
+on launch and every 6 hours, download in the background, and install when the user clicks
+**Restart to update**. Every update is verified against the public key in `tauri.conf.json`; a tampered
+or unsigned update is rejected. Both automatic steps can be turned off in Settings → Updates.
 
-Back up `~/.tauri/sorte.key`. If it's lost, existing installs can't verify new updates and must be reinstalled manually.
+**One-time setup:**
+- The repo must be **public**: apps download release files without logging in.
+- Repo → Settings → Secrets and variables → Actions → add `TAURI_SIGNING_PRIVATE_KEY` with the contents of
+  `~/.tauri/sorte.key` (`pbcopy < ~/.tauri/sorte.key`). Back this file up: if it's lost, existing installs
+  can't verify new updates and must be reinstalled manually.
+- Repo → Settings → Actions → General → Workflow permissions: **Read and write**, so the workflow can publish releases.
 
-**Each release:**
-```bash
-npm run release:version 0.2.0
-git commit -am "Release v0.2.0" && git tag v0.2.0 && git push --follow-tags
-```
-The workflow drafts a release with macOS (Apple silicon) and Windows (x64) installers plus `latest.json`.
-Review it and click **Publish** — only then do installed apps see the update. Then refresh the website's
-download page with `npm run release:manifest -- --base-url https://github.com/houssambelkasmi11-prog/sorte/releases/download/v0.2.0`.
+To bump the major or minor version, run `npm run release:version 0.2.0` and commit. Builds are ad-hoc signed;
+for Gatekeeper-clean downloads add an Apple Developer ID (see the comment in the workflow).
 
 Local signed build: `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/sorte.key)" npm run tauri build`.
 

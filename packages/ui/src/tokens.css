@@ -74,22 +74,34 @@
   /* Motion */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-in-out: cubic-bezier(0.6, 0, 0.3, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --d-1: 120ms;
   --d-2: 220ms;
   --d-3: 480ms;
 }
 
+/* Reduced motion: system setting (unless the app overrides to full) or the in-app setting. */
 @media (prefers-reduced-motion: reduce) {
-  :root {
-    --d-1: 0ms;
-    --d-2: 0ms;
-    --d-3: 0ms;
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }
-:root[data-motion="reduced"] {
-  --d-1: 0ms;
-  --d-2: 0ms;
-  --d-3: 0ms;
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
 }
 
 *,
@@ -290,11 +302,6 @@ a {
     transform: rotate(360deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .s-orbit::after {
-    animation-duration: 2.4s;
-  }
-}
 
 /* Surfaces */
 .s-panel {
@@ -383,4 +390,101 @@ a {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ───────── Motion primitives ───────── */
+.s-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    background var(--d-2) var(--ease),
+    border-color var(--d-2) var(--ease),
+    box-shadow var(--d-3) var(--ease-expo),
+    transform var(--d-3) var(--spring),
+    filter var(--d-2) var(--ease);
+}
+.s-btn:hover:not([disabled]) {
+  transform: translateY(-1px);
+}
+.s-btn:active:not([disabled]) {
+  transform: scale(0.96);
+  transition-duration: 80ms;
+}
+/* A light sweep across primary buttons on hover. */
+.s-btn--primary::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -20% auto -20% -40%;
+  width: 34%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transition: left 0ms;
+}
+.s-btn--primary:hover::after {
+  left: 115%;
+  transition: left 700ms var(--ease-expo);
+}
+.s-switch {
+  transition: background var(--d-3) var(--ease-expo), box-shadow var(--d-3) var(--ease-expo);
+}
+.s-switch::after {
+  transition: transform var(--d-3) var(--spring), background var(--d-2) var(--ease), width 160ms var(--ease);
+}
+.s-switch:active::after {
+  width: 19px;
+}
+.s-switch:checked {
+  box-shadow: 0 0 14px rgba(200, 255, 61, 0.25);
+}
+.s-switch:checked:active::after {
+  transform: translateX(9px);
+}
+.s-input,
+.s-select {
+  transition: border-color var(--d-2) var(--ease), box-shadow var(--d-3) var(--ease-expo), background var(--d-2) var(--ease);
+}
+.s-input:focus,
+.s-select:focus {
+  box-shadow: 0 0 0 3px rgba(200, 255, 61, 0.12);
+  border-color: rgba(200, 255, 61, 0.55);
+}
+.s-pill {
+  transition: border-color var(--d-3) var(--ease), color var(--d-3) var(--ease);
+}
+.s-pill__dot {
+  position: relative;
+}
+.s-pill[data-tone="sage"] .s-pill__dot::after,
+.s-pill[data-tone="lavender"] .s-pill__dot::after,
+.s-pill[data-tone="amber"] .s-pill__dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--tone);
+  animation: s-ping 2.6s var(--ease-expo) infinite;
+}
+@keyframes s-ping {
+  to {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+@keyframes s-char {
+  from {
+    opacity: 0;
+    transform: translateY(0.55em) rotate(5deg);
+    filter: blur(6px);
+  }
+}
+.s-reveal__c {
+  display: inline-block;
+  white-space: pre;
+  animation: s-char 620ms var(--ease-expo) backwards;
+  animation-delay: calc(var(--c) * 22ms);
+}
+.s-count {
+  font-variant-numeric: tabular-nums;
 }

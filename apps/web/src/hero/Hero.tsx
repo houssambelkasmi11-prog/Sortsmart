@@ -65,13 +65,35 @@ export function Hero() {
 
   useEffect(() => sceneRef.current?.setReducedMotion(reduced), [reduced]);
 
+  // Scrolling away: the copy lifts and fades, and the lens turns and stops down.
+  const heroRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (reduced) return;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const hero = heroRef.current;
+        if (!hero) return;
+        const p = Math.min(1, window.scrollY / hero.offsetHeight);
+        hero.style.setProperty("--p", p.toFixed(3));
+        sceneRef.current?.setScroll(p);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [reduced]);
+
   const highlight = (i: number | null) => {
     setActive(i);
     sceneRef.current?.setHighlight(i);
   };
 
   return (
-    <section className="hero" aria-labelledby="hero-title">
+    <section className="hero" aria-labelledby="hero-title" ref={heroRef}>
       <div className="hero__stage" data-mode={mode} ref={stageRef}>
         {mode === "fallback" && <StaticLens />}
       </div>
@@ -79,9 +101,14 @@ export function Hero() {
       <div className="hero__copy">
         <p className="s-eyebrow hero__eyebrow">AI material vision</p>
         <h1 id="hero-title" className="s-display hero__title">
-          Waste,
-          <br />
-          <em>understood</em>
+          <span className="line">
+            <span className="line__in">Waste,</span>
+          </span>
+          <span className="line">
+            <span className="line__in line__in--2">
+              <em>understood</em>
+            </span>
+          </span>
         </h1>
         <p className="hero__lede">It sees what you throw away — and knows where it goes.</p>
         <div className="hero__ctas">

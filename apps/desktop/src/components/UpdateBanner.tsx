@@ -1,12 +1,13 @@
-import { useEffect } from "react";
-import { installUpdate, restartApp, describeUpdateError } from "../platform/updates";
+import { useEffect, useState } from "react";
+import { describeUpdateError, installAndRestart } from "../platform/updates";
 import { useApp } from "../state/store";
 
 const RECHECK_MS = 6 * 60 * 60 * 1000;
 
-/** Slim top banner. Never installs on its own — the user clicks Update. */
+/** Downloads happen in the background; the restart is always the user's click. */
 export function UpdateBanner() {
-  const { update, setUpdate, runUpdateCheck, settings } = useApp();
+  const { update, setUpdate, runUpdateCheck, startUpdateDownload, settings } = useApp();
+  const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
     if (!settings.updates.autoCheck) return;
@@ -23,24 +24,8 @@ export function UpdateBanner() {
         <span>
           SORTÉ <strong>{u.version}</strong> is available
         </span>
-        {u.body && (
-          <span className="update__notes" title={u.body}>
-            {u.body.split("\n")[0]}
-          </span>
-        )}
-        <button
-          className="update__btn"
-          onClick={async () => {
-            setUpdate({ kind: "downloading", version: u.version, received: 0, total: null });
-            try {
-              await installUpdate(u, (received, total) => setUpdate({ kind: "downloading", version: u.version, received, total }));
-              setUpdate({ kind: "ready", version: u.version });
-            } catch (e) {
-              setUpdate({ kind: "error", message: describeUpdateError(e) });
-            }
-          }}
-        >
-          Update
+        <button className="update__btn" onClick={() => void startUpdateDownload(u)}>
+          Download
         </button>
       </div>
     );
@@ -50,7 +35,7 @@ export function UpdateBanner() {
     return (
       <div className="update" role="status">
         <span className="update__dot update__dot--busy" />
-        <span>Downloading {update.version}…</span>
+        <span>Downloading {update.version}</span>
         <span className="update__bar" data-indeterminate={pct === null}>
           <span style={{ width: pct === null ? undefined : `${pct}%` }} />
         </span>
@@ -59,12 +44,32 @@ export function UpdateBanner() {
     );
   }
   if (update.kind === "ready") {
+    const u = update.update;
     return (
       <div className="update" role="status">
         <span className="update__dot" />
-        <span>{update.version} installed</span>
-        <button className="update__btn" onClick={() => void restartApp()}>
-          Restart now
+        <span>
+          SORTÉ <strong>{u.version}</strong> is ready
+        </span>
+        {u.body && (
+          <span className="update__notes" title={u.body}>
+            {u.body.split("\n")[0]}
+          </span>
+        )}
+        <button
+          className="update__btn"
+          disabled={installing}
+          onClick={async () => {
+            setInstalling(true);
+            try {
+              await installAndRestart(u);
+            } catch (e) {
+              setInstalling(false);
+              setUpdate({ kind: "error", message: describeUpdateError(e) });
+            }
+          }}
+        >
+          {installing ? "Installing…" : "Restart to update"}
         </button>
       </div>
     );

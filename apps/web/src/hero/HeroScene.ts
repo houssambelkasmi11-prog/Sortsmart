@@ -47,6 +47,8 @@ export class HeroScene {
   private frame = 0;
   private running = false;
   private elapsed = 0;
+  private intro = 0;
+  private scroll = 0;
   private observer: ResizeObserver;
 
   constructor(
@@ -358,6 +360,10 @@ export class HeroScene {
     this.pointerInside = false;
   };
 
+  setScroll(p: number) {
+    this.scroll = p;
+  }
+
   setHighlight(index: number | null) {
     this.highlighted = index;
   }
@@ -405,9 +411,15 @@ export class HeroScene {
     if (!reduced) this.elapsed += dt;
     const t = this.elapsed;
 
+    // Intro: the lens settles in while its iris opens and the bloom calms down.
+    this.intro = reduced ? 1 : Math.min(1, this.intro + dt / 2.2);
+    const introEase = 1 - Math.pow(1 - this.intro, 4);
+    this.lens.scale.setScalar(0.8 + 0.2 * introEase);
+    this.bloom.strength = 0.75 + (1 - introEase) * 1.3;
+
     // The lens looks toward the pointer (spring-damped).
     const look = this.pointerInside && !reduced;
-    const targetY = -0.32 + (look ? this.pointer.x * 0.55 : Math.sin(t * 0.3) * 0.12);
+    const targetY = -0.32 + (1 - introEase) * -0.7 + this.scroll * 0.8 + (look ? this.pointer.x * 0.55 : Math.sin(t * 0.3) * 0.12);
     const targetX = 0.08 + (look ? -this.pointer.y * 0.4 : Math.sin(t * 0.23) * 0.06);
     const k = 22;
     this.rot.vy += (targetY - this.rot.y) * k * dt;
@@ -448,7 +460,8 @@ export class HeroScene {
 
     // Aperture: breathes; opens for a stream; contracts when you look straight in.
     const breathe = reduced ? 0 : Math.sin(t * 0.9) * 0.06;
-    const targetAperture = (active !== null ? 0.62 : 0.4) + breathe - centerFocus * 0.22;
+    const open = (active !== null ? 0.62 : 0.4) + breathe - centerFocus * 0.22 - this.scroll * 0.3;
+    const targetAperture = 0.02 + (open - 0.02) * introEase;
     this.aperture += (targetAperture - this.aperture) * lerp;
     this.blades.forEach((b) => (b.children[0]!.rotation.z = this.aperture));
 
