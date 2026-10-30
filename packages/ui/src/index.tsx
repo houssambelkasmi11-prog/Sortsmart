@@ -1,4 +1,5 @@
 export * from "./motion";
+export * from "./glass-core";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Tone = "neutral" | "sage" | "amber" | "lavender" | "danger";

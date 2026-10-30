@@ -969,6 +969,9 @@ button.chute:not(:disabled):active {
   mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><path d='M0 8V4C20 0 40 0 60 4S100 8 120 4V8Z'/></svg>") repeat-x 0 0 / 50% 100%;
   animation: wave 3.2s linear infinite;
 }
+.chute:not([data-filled="true"]) .chute__wave {
+  opacity: 0;
+}
 @keyframes wave {
   to {
     transform: translateX(-50%);
@@ -1768,4 +1771,34 @@ button.chute:not(:disabled):hover .chute__glyph {
     width: calc(100% - 100px);
     left: calc(50% + 34px);
   }
+}
+
+/* Update status */
+.update--slim {
+  min-width: 0;
+  padding: 8px 14px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.update--btn {
+  min-width: 0;
+  padding: 9px 16px;
+  border: 0;
+  background: none;
+  color: #fff;
+  font: 500 var(--fs-xs) var(--font-sans);
+  cursor: pointer;
+  transition: transform 420ms var(--spring);
+}
+.update--btn:hover {
+  transform: scale(1.04);
+}
+.update__sheetbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+.dialog .update__bar {
+  height: 5px;
 }

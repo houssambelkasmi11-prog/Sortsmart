@@ -5,9 +5,9 @@ Intelligent recycling: a website, a desktop app (macOS · Windows), and an AI cl
 ```
 packages/core     Classification engine, provider adapters, device contract, schemas (TypeScript, Zod) + tests
 packages/ui       Design tokens, bundled fonts, shared primitives
-apps/web          Website — Three.js lens hero, /sorting /technology /download /docs /settings
+apps/web          Website — liquid glass lens hero (src/gl), /download, /docs
 apps/desktop      Desktop UI (React) + src-tauri (Rust: keychain, HTTP proxy, storage)
-scripts/          Release manifest generator
+scripts/          Version bump
 ```
 
 ## Run
@@ -38,7 +38,7 @@ The app opens on **Live** (`apps/desktop/src/screens/Live.tsx`): the camera fill
 
 - **When a model runs:** `packages/core/src/live.ts` compares small grayscale frames on the device. It learns the empty scene, waits for an item to hold still, and triggers one classification per item. Nothing is sent while the picture moves, and the shutter always works manually. Auto with a cloud provider asks for permission first, and the session budget still applies.
 - **Privacy:** the camera only runs on the Live screen. Frames aren't stored; history keeps results and a hash.
-- **Glass:** `apps/desktop/src/gl` renders the background shader and camera, then refracts them through every `[data-glass]` element using a signed distance field, so panels really bend the picture and melt together. Without WebGL2 the app falls back to a CSS blur. Quality drops automatically on slow GPUs.
+- **Glass:** `packages/ui/src/glass-core.ts` refracts a scene through every `[data-glass]` element using a signed distance field, so panels really bend the picture and melt together. The app feeds it the camera (`apps/desktop/src/gl`); the website feeds it a flow that sorts itself inside the lens (`apps/web/src/gl`). Without WebGL2 both fall back to a CSS blur. Quality drops automatically on slow GPUs.
 
 ## Website deployment
 
@@ -49,11 +49,12 @@ Vercel builds only `apps/web` (see `vercel.json`); `.vercelignore` keeps the Rus
 Every push to `main` that touches the app builds and publishes a new release automatically
 (`.github/workflows/release.yml`): macOS (Apple silicon) and Windows (x64) installers plus `latest.json`,
 versioned `major.minor.<run number>`. The release only goes public after both platforms succeed.
-Website and Markdown-only pushes don't trigger a release.
+Website and Markdown-only pushes don't trigger a release, so only app changes reach users as updates.
 
 Installed apps check `github.com/houssambelkasmi11-prog/Sortsmart/releases/latest/download/latest.json`
-on launch and every 6 hours, download in the background, and install when the user clicks
-**Restart to update**. Every update is verified against the public key in `tauri.conf.json`; a tampered
+first thing on every launch (before the camera opens) and every 6 hours; Settings → Updates → Check now does the
+same on demand. A found update opens a sheet, downloads in the background, and installs when the user clicks
+**Restart to update**. The website's download buttons read the latest release from GitHub at runtime. Every update is verified against the public key in `tauri.conf.json`; a tampered
 or unsigned update is rejected. Both automatic steps can be turned off in Settings → Updates.
 
 **One-time setup:**

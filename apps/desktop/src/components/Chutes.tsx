@@ -43,6 +43,7 @@ export function Chutes({
             data-glass="clear"
             data-chute={c.id}
             data-active={isActive}
+            data-filled={isActive || target > 0}
             style={{ "--c": categoryColor(c.id), "--i": i } as React.CSSProperties}
             onClick={onPick ? () => onPick(c.id) : undefined}
             disabled={onPick ? !pickable : undefined}

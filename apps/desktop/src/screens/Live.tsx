@@ -25,7 +25,7 @@ function grabFrame(video: HTMLVideoElement): Promise<Blob> {
 
 export function Live() {
   const app = useApp();
-  const { settings, engine, updateSettings, addRecord, updateRecord, device, deviceStatus, refreshDevice, go } = app;
+  const { settings, engine, updateSettings, addRecord, updateRecord, device, deviceStatus, refreshDevice, go, startupChecked } = app;
   const live = settings.live;
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -101,8 +101,16 @@ export function Live() {
     [updateSettings],
   );
 
+  // The launch update check goes first, then the camera.
+  const autoStarted = useRef(false);
   useEffect(() => {
+    if (!startupChecked || autoStarted.current) return;
+    autoStarted.current = true;
     if (settings.live.autoStart) void startCamera(settings.live.cameraId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startupChecked]);
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
       streamRef.current?.getTracks().forEach((t) => t.stop());

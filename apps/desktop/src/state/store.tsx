@@ -49,6 +49,10 @@ interface AppState {
   update: UpdateState;
   setUpdate(u: UpdateState): void;
   runUpdateCheck(opts?: { silent?: boolean }): Promise<void>;
+  /** False until the launch update check has answered; the camera waits for it. */
+  startupChecked: boolean;
+  updateSheetOpen: boolean;
+  closeUpdateSheet(): void;
   startUpdateDownload(update: Update, opts?: { silent?: boolean }): Promise<void>;
 }
 
@@ -87,20 +91,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const [startupChecked, setStartupChecked] = useState(false);
+  const [updateSheetOpen, setUpdateSheetOpen] = useState(false);
+  const dismissedVersion = useRef<string | null>(null);
+  const startupRan = useRef(false);
+  const closeUpdateSheet = useCallback(() => {
+    setUpdateSheetOpen(false);
+    const u = updateRef.current;
+    if (u.kind === "available" || u.kind === "ready") dismissedVersion.current = u.update.version;
+    else if (u.kind === "downloading") dismissedVersion.current = u.version;
+  }, []);
+
   // Silent checks never surface errors; a manual check from Settings does.
-  const runUpdateCheck = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
-    const busy = ["checking", "downloading", "ready"].includes(updateRef.current.kind);
-    if (busy) return;
+  const runUpdateCheck = useCallback(async ({ silent = false, timeoutMs }: { silent?: boolean; timeoutMs?: number } = {}) => {
+    const now = updateRef.current;
+    if (now.kind === "checking") return;
+    // Already fetched or fetching: a manual check just brings it back up.
+    if (now.kind === "downloading" || now.kind === "ready") {
+      if (!silent) setUpdateSheetOpen(true);
+      return;
+    }
     setUpdate({ kind: "checking" });
     try {
-      const u = await checkForUpdate();
+      const u = await checkForUpdate(timeoutMs);
+      setStartupChecked(true);
+      if (u && (!silent || dismissedVersion.current !== u.version)) setUpdateSheetOpen(true);
       if (!u) setUpdate({ kind: "current", checkedAt: new Date() });
       else if (autoDownloadRef.current) await startUpdateDownload(u, { silent });
       else setUpdate({ kind: "available", update: u });
     } catch (e) {
+      console.warn("[sorte] update check failed", e);
+      setStartupChecked(true);
       setUpdate(silent ? { kind: "idle" } : { kind: "error", message: describeUpdateError(e) });
     }
   }, [startUpdateDownload]);
+
+  // Every launch checks for a new version first, before the camera opens.
+  useEffect(() => {
+    if (!ready || startupRan.current) return;
+    startupRan.current = true;
+    if (settings.updates.autoCheck) void runUpdateCheck({ silent: true, timeoutMs: 6_000 });
+    else setStartupChecked(true);
+  }, [ready, settings.updates.autoCheck, runUpdateCheck]);
 
   // Load persisted state once.
   useEffect(() => {
@@ -223,6 +255,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUpdate,
     runUpdateCheck,
     startUpdateDownload,
+    startupChecked,
+    updateSheetOpen,
+    closeUpdateSheet,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

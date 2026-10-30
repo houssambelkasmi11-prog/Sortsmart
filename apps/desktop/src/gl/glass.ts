@@ -1,6 +1,6 @@
-import { COMPOSITE_FS, FULLSCREEN_VS, SCENE_FS } from "./shaders";
+import { COMPOSITE_FS, GlassCollector, createProgram } from "@sorte/ui";
+import { SCENE_FS } from "./shaders";
 
-const MAX_RECTS = 24;
 const SCENE_MAX_WIDTH = 1600;
 
 type Source = HTMLVideoElement | HTMLImageElement;
@@ -16,29 +16,6 @@ export function cssColor(value: string): Rgb {
   return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
-function program(gl: WebGL2RenderingContext, fs: string) {
-  const compile = (type: number, src: string) => {
-    const s = gl.createShader(type)!;
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) ?? "Shader failed");
-    return s;
-  };
-  const p = gl.createProgram()!;
-  gl.attachShader(p, compile(gl.VERTEX_SHADER, FULLSCREEN_VS));
-  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
-  gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) ?? "Link failed");
-  const cache = new Map<string, WebGLUniformLocation | null>();
-  return {
-    p,
-    u(name: string) {
-      if (!cache.has(name)) cache.set(name, gl.getUniformLocation(p, name));
-      return cache.get(name) ?? null;
-    },
-  };
-}
-
 /**
  * Full-window renderer behind the DOM. Elements marked data-glass="frost" or
  * "clear" get real refraction of whatever is behind them. If WebGL2 is missing
@@ -46,8 +23,8 @@ function program(gl: WebGL2RenderingContext, fs: string) {
  */
 class GlassRenderer {
   private gl: WebGL2RenderingContext | null = null;
-  private scene!: ReturnType<typeof program>;
-  private composite!: ReturnType<typeof program>;
+  private scene!: ReturnType<typeof createProgram>;
+  private composite!: ReturnType<typeof createProgram>;
   private fbo: WebGLFramebuffer | null = null;
   private sceneTex: WebGLTexture | null = null;
   private camTex: WebGLTexture | null = null;
@@ -77,9 +54,7 @@ class GlassRenderer {
   private pulse = 1;
   private pulseColor: Rgb = [1, 1, 1];
   private mouse: [number, number] = [-9999, -9999];
-  private radii = new WeakMap<Element, number>();
-  private rects = new Float32Array(MAX_RECTS * 4);
-  private meta = new Float32Array(MAX_RECTS * 4);
+  private collector = new GlassCollector();
   reduced = false;
 
   attach(canvas: HTMLCanvasElement): boolean {
@@ -87,8 +62,8 @@ class GlassRenderer {
     const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, powerPreference: "high-performance" });
     if (!gl) return false;
     try {
-      this.scene = program(gl, SCENE_FS);
-      this.composite = program(gl, COMPOSITE_FS);
+      this.scene = createProgram(gl, SCENE_FS);
+      this.composite = createProgram(gl, COMPOSITE_FS);
     } catch (err) {
       console.warn("[sorte] glass shaders unavailable, using CSS fallback", err);
       return false;
@@ -235,32 +210,6 @@ class GlassRenderer {
     return ready;
   }
 
-  /** Collects glass elements. Reads layout once per frame, so glass follows every DOM animation. */
-  private collect(): number {
-    const dpr = this.dpr;
-    let n = 0;
-    for (const el of document.querySelectorAll<HTMLElement>("[data-glass]")) {
-      if (n >= MAX_RECTS) break;
-      const r = el.getBoundingClientRect();
-      if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > window.innerHeight) continue;
-      let radius = this.radii.get(el);
-      if (radius === undefined) {
-        radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
-        this.radii.set(el, radius);
-      }
-      const hw = (r.width * dpr) / 2;
-      const hh = (r.height * dpr) / 2;
-      let alpha = parseFloat(getComputedStyle(el).opacity);
-      const screen = el.closest<HTMLElement>(".screen");
-      if (screen) alpha *= parseFloat(getComputedStyle(screen).opacity);
-      if (alpha < 0.01) continue;
-      this.rects.set([(r.left + r.width / 2) * dpr, (r.top + r.height / 2) * dpr, hw, hh], n * 4);
-      this.meta.set([Math.min(radius * dpr, hw, hh), alpha, el.dataset.glass === "frost" ? 1 : 0, 0], n * 4);
-      n++;
-    }
-    return n;
-  }
-
   private render(dt: number) {
     const gl = this.gl;
     if (!gl || gl.isContextLost()) return;
@@ -298,7 +247,7 @@ class GlassRenderer {
     gl.generateMipmap(gl.TEXTURE_2D);
 
     // Composite pass: the glass itself.
-    const n = this.collect();
+    const n = this.collector.collect(this.dpr);
     const co = this.composite;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.w, this.h);
@@ -307,8 +256,8 @@ class GlassRenderer {
     gl.uniform2f(co.u("uRes"), this.w, this.h);
     gl.uniform1f(co.u("uDpr"), this.dpr);
     gl.uniform1i(co.u("uCount"), n);
-    gl.uniform4fv(co.u("uRect"), this.rects);
-    gl.uniform4fv(co.u("uMeta"), this.meta);
+    gl.uniform4fv(co.u("uRect"), this.collector.rects);
+    gl.uniform4fv(co.u("uMeta"), this.collector.meta);
     gl.uniform2f(co.u("uMouse"), this.mouse[0] * this.dpr, this.mouse[1] * this.dpr);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }

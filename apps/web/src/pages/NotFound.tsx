@@ -4,9 +4,9 @@ import { PageHeader } from "../App";
 export function NotFound() {
   return (
     <div className="page">
-      <PageHeader eyebrow="404" title={<>This page needs <em>review.</em></>} lede="We couldn't place this address in any known route." />
+      <PageHeader eyebrow="404" title="Wrong stream." />
       <p className="page__foot">
-        <Link to="/" className="s-btn">
+        <Link to="/" className="btn btn--solid">
           Back home
         </Link>
       </p>

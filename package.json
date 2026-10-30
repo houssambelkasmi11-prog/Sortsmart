@@ -14,7 +14,6 @@
     "typecheck": "tsc -p packages/core && tsc -p packages/ui && tsc -p apps/web && tsc -p apps/desktop",
     "test": "vitest run",
     "build:web": "npm run build -w @sorte/web",
-    "release:manifest": "node scripts/generate-release-manifest.mjs",
     "release:version": "node scripts/bump-version.mjs"
   },
   "devDependencies": {

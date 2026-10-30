@@ -202,7 +202,7 @@ export function Settings() {
         <div className="toggle-row">
           <div>
             <p className="s-label">Check automatically</p>
-            <p className="s-hint">On launch and every 6 hours.</p>
+            <p className="s-hint">First thing on every launch, then every 6 hours.</p>
           </div>
           <input
             type="checkbox"
@@ -234,8 +234,10 @@ export function Settings() {
           <span className="s-hint">
             {!updatesSupported
               ? "Desktop app only."
+              : update.kind === "checking"
+                ? "Checking…"
               : update.kind === "current"
-                ? `Up to date · ${update.checkedAt.toLocaleTimeString()}`
+                ? `You're on the latest version · ${update.checkedAt.toLocaleTimeString()}`
                 : update.kind === "available"
                   ? `${update.update.version} available`
                   : update.kind === "downloading"

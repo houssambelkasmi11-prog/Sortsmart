@@ -1,5 +1,7 @@
 import { PROVIDER_PRESETS } from "@sorte/core";
+import { useEffect } from "react";
 import { PageHeader } from "../App";
+import { field } from "../gl/field";
 
 const SECTIONS = [
   ["installation", "Installation"],
@@ -14,6 +16,10 @@ const SECTIONS = [
 ] as const;
 
 export function Docs() {
+  useEffect(() => {
+    field.setMood(0, 0.45);
+    return () => field.setMood(0, 1);
+  }, []);
   return (
     <div className="page page--docs">
       <PageHeader eyebrow="Documentation" title="Set up SORTÉ." />
@@ -33,7 +39,7 @@ export function Docs() {
               Published installers appear on the <a href="/download">download page</a> with their SHA-256 checksum. Until a release is published, build from source (see{" "}
               <a href="#development">Development setup</a>). macOS 11+ and Windows 10 (1803+) with WebView2 are the targets.
             </p>
-            <p>On first launch SORTÉ starts in <strong>Demo</strong> mode: no account, no key, no network.</p>
+            <p>On first launch SORTÉ starts in <strong>Demo</strong> mode: no account or key needed. It checks for a new version first thing on every launch, downloads it in the background, and asks you to restart.</p>
           </section>
 
           <section id="providers">
@@ -121,7 +127,7 @@ export function Docs() {
           <section id="privacy">
             <h2>Privacy</h2>
             <ul>
-              <li>Local and Demo modes send nothing off the device. There is no telemetry.</li>
+              <li>Local and Demo modes send no images off the device. The only other request is the update check, to GitHub. There is no telemetry.</li>
               <li>Cloud mode sends the resized image and a short prompt to the provider you selected — nothing else.</li>
               <li>Hybrid mode only escalates to cloud after you enable it and acknowledge a disclosure. Hazardous items are never escalated.</li>
               <li>History is off by default. When enabled it stores results and an image hash — never the image — and is pruned after your retention period. You can clear it at any time.</li>

@@ -23,9 +23,9 @@ export async function appVersion(): Promise<string> {
   return isDesktop ? getVersion() : "dev";
 }
 
-export async function checkForUpdate(): Promise<Update | null> {
+export async function checkForUpdate(timeoutMs = 15_000): Promise<Update | null> {
   if (!isDesktop) return null;
-  return check({ timeout: 15_000 });
+  return check({ timeout: timeoutMs });
 }
 
 export async function downloadUpdate(update: Update, onProgress: (received: number, total: number | null) => void): Promise<void> {

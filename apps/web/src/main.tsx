@@ -3,26 +3,24 @@ import "@sorte/ui/tokens.css";
 import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Layout } from "./App";
 import { Docs } from "./pages/Docs";
 import { Download } from "./pages/Download";
 import { Home } from "./pages/Home";
 import { NotFound } from "./pages/NotFound";
-import { SettingsPreview } from "./pages/SettingsPreview";
-import { Sorting } from "./pages/Sorting";
-import { Technology } from "./pages/Technology";
 
 const router = createBrowserRouter([
   {
     element: <Layout />,
     children: [
       { path: "/", element: <Home /> },
-      { path: "/sorting", element: <Sorting /> },
-      { path: "/technology", element: <Technology /> },
       { path: "/download", element: <Download /> },
       { path: "/docs", element: <Docs /> },
-      { path: "/settings", element: <SettingsPreview /> },
+      // Older addresses keep working.
+      { path: "/sorting", element: <Navigate to="/#streams" replace /> },
+      { path: "/technology", element: <Navigate to="/" replace /> },
+      { path: "/settings", element: <Navigate to="/docs" replace /> },
       { path: "*", element: <NotFound /> },
     ],
   },

@@ -2,7 +2,7 @@ import { StatusPill } from "@sorte/ui";
 import { motionReduced } from "@sorte/ui";
 import { useEffect, useRef, useState } from "react";
 import { isDesktop } from "./platform";
-import { UpdateBanner } from "./components/UpdateBanner";
+import { UpdateBanner, UpdateSheet } from "./components/UpdateBanner";
 import { Devices } from "./screens/Devices";
 import { History } from "./screens/History";
 import { LocalModels } from "./screens/LocalModels";
@@ -94,6 +94,7 @@ export function App() {
             </StatusPill>
           </button>
           <UpdateBanner />
+          <UpdateSheet />
           {notices.map((n) => (
             <div key={n} className="update" data-glass="frost" role="status">
               <span>{n}</span>
