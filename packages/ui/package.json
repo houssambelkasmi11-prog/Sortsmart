@@ -1,0 +1,19 @@
+{
+  "name": "@sorte/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./tokens.css": "./src/tokens.css",
+    "./fonts": "./src/fonts.ts"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/unbounded": "^5.3.0"
+  }
+}
