@@ -14,6 +14,14 @@ function version(id: string): number {
   return m ? Number(m[1]) * 100 + Number(m[2] ?? 0) : 0;
 }
 
+/** The best balance of speed and accuracy found so far in testing on Ollama. */
+export const RECOMMENDED_LOCAL_MODEL = "gemma3:4b";
+
+/** Picks the recommended model if it's installed; otherwise leaves the order alone. */
+export function pickLocalModel(models: readonly string[]): string | null {
+  return models.find((m) => m === RECOMMENDED_LOCAL_MODEL) ?? models.find((m) => /^gemma3(:latest)?$/.test(m)) ?? models[0] ?? null;
+}
+
 export function usableForPhotos(models: readonly ModelInfo[]): ModelInfo[] {
   return models.filter((m) => m.imageInput !== false && !NOT_FOR_PHOTOS.test(m.id));
 }

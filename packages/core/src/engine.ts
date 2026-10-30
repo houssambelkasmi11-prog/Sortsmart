@@ -44,6 +44,15 @@ const REVIEW_FLAGS: Partial<Record<ClassificationFlag, string>> = {
   contaminated: "Item appears contaminated; local rules may require residual waste.",
 };
 
+/**
+ * Small models can name a battery and still not flag it. What the model says the
+ * item is gets checked here, so missing a flag can't send one to household waste.
+ */
+const MATERIAL_FLAGS: [RegExp, ClassificationFlag][] = [
+  [/\b(batter(y|ies)|li-?ion|lithium|power ?bank|aerosols?|spray cans?|syringes?|needles?|razor blades?|bleach|solvents?|pesticides?|paint cans?|gas (can|canister)s?|lighters?)\b/i, "hazardous"],
+  [/\b(phones?|smartphones?|laptops?|chargers?|circuit boards?|headphones?|earbuds?|remote controls?|electronics?|cables?)\b/i, "electronic"],
+];
+
 const BACKOFF_BASE_MS = 600;
 const BACKOFF_CAP_MS = 4_000;
 
@@ -229,7 +238,11 @@ export class ClassificationEngine {
   private finalize(output: ModelOutput, provider: AIProvider, model: string, settings: ApplicationSettings, latencyMs: number): ClassificationResult {
     const reviewReasons: string[] = [];
     const warnings = [...output.warnings];
-    for (const flag of output.flags) {
+    const flags = [...output.flags];
+    for (const [pattern, flag] of MATERIAL_FLAGS) {
+      if (pattern.test(output.material) && !flags.includes(flag)) flags.push(flag);
+    }
+    for (const flag of flags) {
       const reason = REVIEW_FLAGS[flag];
       if (reason) reviewReasons.push(reason);
     }
@@ -257,7 +270,7 @@ export class ClassificationEngine {
       requiresReview: reviewReasons.length > 0,
       reviewReasons,
       warnings,
-      flags: output.flags,
+      flags,
       provider: provider.id,
       model,
       location: provider.location,

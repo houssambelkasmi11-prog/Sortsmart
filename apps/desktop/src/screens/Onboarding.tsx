@@ -1,4 +1,4 @@
-import { CATEGORIES, OllamaProvider, PROVIDER_PRESETS, createProvider, pickDefaultModel, usableForPhotos, type AiMode, type ModelInfo, type ProviderConfig } from "@sorte/core";
+import { CATEGORIES, OllamaProvider, PROVIDER_PRESETS, RECOMMENDED_LOCAL_MODEL, createProvider, pickDefaultModel, pickLocalModel, usableForPhotos, type AiMode, type ModelInfo, type ProviderConfig } from "@sorte/core";
 import { Orbit } from "@sorte/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Chutes } from "../components/Chutes";
@@ -17,7 +17,6 @@ const CLOUD = [
   { preset: "anthropic", name: "Anthropic", company: "Anthropic", note: "Pay per use", site: "Anthropic Console", keyUrl: "https://console.anthropic.com/settings/keys" },
 ] as const;
 
-const OLLAMA_MODEL = "gemma3";
 const isWindows = /Windows/.test(navigator.userAgent);
 
 interface Choice {
@@ -307,7 +306,7 @@ function LocalStep({ existing, onBack, onDone }: { existing: ProviderConfig[]; o
       const flags = await Promise.all(found.map((m) => provider.modelSupportsImages(m.id).catch(() => null)));
       const vision = found.filter((_, i) => flags[i] === true).map((m) => m.id);
       setModels(vision);
-      setModel((m) => (vision.includes(m) ? m : vision[0] ?? ""));
+      setModel((m) => (vision.includes(m) ? m : pickLocalModel(vision) ?? ""));
       setState(vision.length ? "ok" : "no-model");
     } catch {
       setState("missing");
@@ -324,7 +323,7 @@ function LocalStep({ existing, onBack, onDone }: { existing: ProviderConfig[]; o
     return () => clearInterval(t);
   }, [state, check]);
 
-  const command = `ollama pull ${OLLAMA_MODEL}`;
+  const command = `ollama pull ${RECOMMENDED_LOCAL_MODEL}`;
 
   return (
     <>
@@ -362,7 +361,7 @@ function LocalStep({ existing, onBack, onDone }: { existing: ProviderConfig[]; o
             <div className="setup-row">
               <span className="setup-num">2</span>
               <span className="setup-row__text">
-                It needs a model that can see. Paste this into {isWindows ? "PowerShell" : "Terminal"}. It downloads about 3 GB.
+                It needs a model that can see. Paste this into {isWindows ? "PowerShell" : "Terminal"}. It downloads about 3.4 GB.
               </span>
             </div>
             <div className="setup-code">

@@ -2,13 +2,13 @@ import { CATEGORY_IDS } from "./categories";
 import { FLAG_IDS } from "./schemas";
 
 /** Bump whenever the prompt or schema changes — it is part of the cache key. */
-export const PROMPT_VERSION = "2026-10-30.2";
+export const PROMPT_VERSION = "2026-10-30.4";
 
 const INSTRUCTIONS = [
   "You classify a single waste item in a photo into one disposal stream.",
-  `Streams: paper (paper & cardboard), plastic-metal (plastic packaging & metal containers), glass (glass packaging), organic (food scraps), residual (non-recyclable).`,
+  `Streams: paper (paper, newspaper, cardboard), plastic-metal (cans, tins, plastic bottles and packaging), glass (glass bottles and jars), organic (food scraps, fruit, vegetables), residual (other non-recyclable things such as shoes, textiles, ceramics).`,
   `Use "unknown" if the item is unclear, not waste, or fits no stream. Never guess to be helpful.`,
-  `Set flags: hazardous (batteries, chemicals, sharps, aerosols), electronic, contaminated (heavily soiled), multi-material, poor-image, not-waste.`,
+  `Most items have no flags. Set one only when clearly true: hazardous (batteries, chemicals, sharps, aerosols), electronic, contaminated (heavily soiled), multi-material, poor-image, not-waste (people, pets, furniture, nothing to throw away).`,
 ];
 
 export const SYSTEM_PROMPT = [
@@ -20,7 +20,8 @@ export const SYSTEM_PROMPT = [
 /** Local models write slowly, so they skip the explanation: about two seconds less per scan. */
 export const LOCAL_SYSTEM_PROMPT = [
   ...INSTRUCTIONS,
-  "confidence is your probability (0-1) that the stream is correct. Keep material to a few words.",
+  "First name the item and its material in a few words, then choose the stream that material belongs in.",
+  "confidence is your probability (0-1) that the stream is correct.",
   "Respond only with JSON matching the schema.",
 ].join("\n");
 
@@ -41,13 +42,14 @@ export const OUTPUT_JSON_SCHEMA = {
   },
 } as const;
 
-const { reasoning: _reasoning, warnings: _warnings, ...LOCAL_PROPERTIES } = OUTPUT_JSON_SCHEMA.properties;
+const { category, confidence, flags, material } = OUTPUT_JSON_SCHEMA.properties;
 
 export const LOCAL_OUTPUT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["category", "confidence", "flags", "material"],
-  properties: LOCAL_PROPERTIES,
+  // Material first: a model that has written "glass bottle" rarely then says residual.
+  required: ["material", "category", "confidence", "flags"],
+  properties: { material, category, confidence, flags },
 } as const;
 
 /**

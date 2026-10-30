@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ClassificationEngine, GeminiProvider, OllamaProvider, ProviderError, defaultSettings, geminiThinkingConfig, type AIProvider } from "../src";
+import { ClassificationEngine, GeminiProvider, OllamaProvider, ProviderError, defaultSettings, geminiThinkingConfig, pickLocalModel, type AIProvider } from "../src";
 import { config, fakeTransport, image, json, validOutput } from "./helpers";
 
 const ollamaCfg = config({ kind: "ollama", endpoint: "http://127.0.0.1:11434", location: "local", model: "m" });
@@ -20,7 +20,7 @@ describe("Ollama speed", () => {
     const { transport, calls } = fakeTransport({ "POST /api/show": () => json(200, { capabilities: ["vision"] }), "POST /api/chat": answer(short) });
     const { output } = await new OllamaProvider(ollamaCfg, transport).classify(image);
     const chat = JSON.parse(calls.find((c) => c.url.endsWith("/api/chat"))!.body!);
-    expect(chat.format.required).toEqual(["category", "confidence", "flags", "material"]);
+    expect(chat.format.required).toEqual(["material", "category", "confidence", "flags"]);
     expect(output.category).toBe(validOutput.category);
     expect(output.reasoning).toBe("");
     expect(output.warnings).toEqual([]);
@@ -77,6 +77,49 @@ describe("Gemini", () => {
     expect(err).toBeInstanceOf(ProviderError);
     expect(err.retryAfterMs).toBe(23_000);
     expect(JSON.parse(calls[0]!.body!).generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+  });
+});
+
+describe("safety net", () => {
+  const classifyAs = async (material: string, flags: string[] = []) => {
+    const settings = { ...defaultSettings(), mode: "local" as const, localProviderId: "p" };
+    const provider = {
+      id: "p",
+      name: "p",
+      kind: "ollama",
+      location: "local",
+      config: ollamaCfg,
+      classify: async () => ({ output: { ...validOutput, category: "residual", confidence: 0.95, material, flags }, model: "m" }),
+    } as unknown as AIProvider;
+    const out = await new ClassificationEngine({ getSettings: () => settings, getProvider: () => provider }).classify(image);
+    if (!out.ok) throw out.error;
+    return out.result;
+  };
+
+  it("forces review when a model names a battery but doesn't flag it", async () => {
+    const r = await classifyAs("lithium battery");
+    expect(r.flags).toContain("hazardous");
+    expect(r.requiresReview).toBe(true);
+  });
+
+  it("does the same for electronics, without duplicating flags", async () => {
+    expect((await classifyAs("old phone charger")).flags).toEqual(["electronic"]);
+    expect((await classifyAs("AA batteries", ["hazardous"])).flags).toEqual(["hazardous"]);
+  });
+
+  it("leaves ordinary items alone", async () => {
+    const r = await classifyAs("sneaker");
+    expect(r.flags).toEqual([]);
+    expect(r.requiresReview).toBe(false);
+  });
+});
+
+describe("local model choice", () => {
+  it("prefers the recommended model, then falls back to what's installed", () => {
+    expect(pickLocalModel(["qwen3-vl:8b", "gemma3:4b"])).toBe("gemma3:4b");
+    expect(pickLocalModel(["qwen3-vl:8b", "gemma3:latest"])).toBe("gemma3:latest");
+    expect(pickLocalModel(["qwen3-vl:8b"])).toBe("qwen3-vl:8b");
+    expect(pickLocalModel([])).toBeNull();
   });
 });
 

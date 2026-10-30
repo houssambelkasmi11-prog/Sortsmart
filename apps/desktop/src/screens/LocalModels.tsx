@@ -1,4 +1,4 @@
-import { OllamaProvider, PROVIDER_PRESETS, type ModelInfo, type ProviderConfig } from "@sorte/core";
+import { OllamaProvider, PROVIDER_PRESETS, RECOMMENDED_LOCAL_MODEL, type ModelInfo, type ProviderConfig } from "@sorte/core";
 import { Button, Orbit, StatusPill } from "@sorte/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Empty, Section } from "../components/common";
@@ -147,7 +147,9 @@ function ModelTable({ config, provider }: { config: ProviderConfig; provider: Ol
               const isActive = activeHere && config.model === m.id;
               return (
                 <tr key={m.id}>
-                  <td className="s-mono">{m.name}</td>
+                  <td className="s-mono">
+                    {m.name} {m.id === RECOMMENDED_LOCAL_MODEL && <StatusPill tone="sage">Recommended</StatusPill>}
+                  </td>
                   <td className="muted">{m.sizeBytes ? `${(m.sizeBytes / 1e9).toFixed(1)} GB` : "—"}</td>
                   <td>
                     {v === "checking" ? (
@@ -193,7 +195,7 @@ function SetupSteps({ fromStep = 1 }: { fromStep?: number }) {
   const steps = [
     <>Install Ollama from ollama.com and start it (it listens on 127.0.0.1:11434).</>,
     <>
-      Pull a vision-capable model in Terminal: <code>ollama pull &lt;model&gt;</code>
+      Pull a vision model in a terminal: <code>ollama pull {RECOMMENDED_LOCAL_MODEL}</code>
     </>,
     <>
       Confirm <code>ollama show &lt;model&gt;</code> lists <em>vision</em>, then press Refresh.
