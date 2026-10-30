@@ -8,9 +8,10 @@
 // An entry is only marked published when its artifact exists AND a base URL is given.
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const manifestPath = join(root, "apps/web/src/releases/manifest.json");
 const bundleDirs = [join(root, "apps/desktop/src-tauri/target/release/bundle"), join(root, "apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle")];
 
@@ -47,7 +48,7 @@ for (const r of manifest.releases) {
     continue;
   }
   const buf = readFileSync(file);
-  const name = file.split("/").pop();
+  const name = basename(file);
   r.sha256 = createHash("sha256").update(buf).digest("hex");
   r.sizeBytes = statSync(file).size;
   r.signed = flag("--signed");

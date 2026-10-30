@@ -34,7 +34,8 @@ jobs:
   build:
     needs: version
     strategy:
-      fail-fast: true
+      # Let every platform finish so one failure doesn't hide another; publish still needs all of them.
+      fail-fast: false
       matrix:
         include:
           - platform: macos-latest

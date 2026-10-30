@@ -3,13 +3,14 @@
 // Then: git commit -am "Release v0.2.0" && git tag v0.2.0 && git push --follow-tags
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const version = process.argv[2];
 if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) {
   console.error("Usage: npm run release:version <major.minor.patch>");
   process.exit(1);
 }
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const files = ["package.json", "apps/desktop/package.json", "apps/desktop/src-tauri/tauri.conf.json"];
 for (const f of files) {
   const p = join(root, f);
