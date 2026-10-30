@@ -402,7 +402,7 @@ export function Live() {
                 {result && (
                   <>
                     <p className="why__material">{result.material}</p>
-                    <p>{result.reasoning}</p>
+                    {result.reasoning && <p>{result.reasoning}</p>}
                     {[...result.reviewReasons, ...result.warnings].map((w) => (
                       <p key={w} className="why__warn">
                         {w}

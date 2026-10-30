@@ -15,6 +15,17 @@ describe("Ollama speed", () => {
     expect(chat.messages.at(-1)).toEqual({ role: "assistant", content: "<think>\n\n</think>\n\n" });
   });
 
+  it("asks only for what the screen needs, and accepts the shorter answer", async () => {
+    const { reasoning: _r, warnings: _w, ...short } = validOutput;
+    const { transport, calls } = fakeTransport({ "POST /api/show": () => json(200, { capabilities: ["vision"] }), "POST /api/chat": answer(short) });
+    const { output } = await new OllamaProvider(ollamaCfg, transport).classify(image);
+    const chat = JSON.parse(calls.find((c) => c.url.endsWith("/api/chat"))!.body!);
+    expect(chat.format.required).toEqual(["category", "confidence", "flags", "material"]);
+    expect(output.category).toBe(validOutput.category);
+    expect(output.reasoning).toBe("");
+    expect(output.warnings).toEqual([]);
+  });
+
   it("leaves models that don't think alone", async () => {
     const { transport, calls } = fakeTransport({ "POST /api/show": () => json(200, { capabilities: ["vision"] }), "POST /api/chat": answer() });
     await new OllamaProvider(ollamaCfg, transport).classify(image);

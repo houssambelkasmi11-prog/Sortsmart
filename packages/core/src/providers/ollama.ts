@@ -1,5 +1,5 @@
 import { ProviderError } from "../errors";
-import { OUTPUT_JSON_SCHEMA, SYSTEM_PROMPT, USER_PROMPT } from "../prompt";
+import { LOCAL_OUTPUT_SCHEMA, LOCAL_SYSTEM_PROMPT, USER_PROMPT } from "../prompt";
 import type { ProviderConfig } from "../schemas";
 import { joinUrl } from "../security";
 import type { HttpTransport } from "../transport";
@@ -117,12 +117,12 @@ export class OllamaProvider implements AIProvider {
         body: JSON.stringify({
           model,
           stream: false,
-          format: OUTPUT_JSON_SCHEMA,
+          format: LOCAL_OUTPUT_SCHEMA,
           keep_alive: KEEP_ALIVE,
           options: { temperature: 0 },
           ...(thinks ? { think: false } : {}),
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: LOCAL_SYSTEM_PROMPT },
             { role: "user", content: USER_PROMPT, images: [input.base64] },
             ...(thinks ? [{ role: "assistant", content: NO_THOUGHTS }] : []),
           ],
