@@ -40,6 +40,10 @@ The app opens on **Live** (`apps/desktop/src/screens/Live.tsx`): the camera fill
 - **Privacy:** the camera only runs on the Live screen. Frames aren't stored; history keeps results and a hash.
 - **Glass:** `apps/desktop/src/gl` renders the background shader and camera, then refracts them through every `[data-glass]` element using a signed distance field, so panels really bend the picture and melt together. Without WebGL2 the app falls back to a CSS blur. Quality drops automatically on slow GPUs.
 
+## Website deployment
+
+Vercel builds only `apps/web` (see `vercel.json`); `.vercelignore` keeps the Rust backend out of the deployment.
+
 ## Releases & auto-update
 
 Every push to `main` that touches the app builds and publishes a new release automatically

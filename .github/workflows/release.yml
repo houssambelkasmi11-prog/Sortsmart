@@ -11,6 +11,8 @@ on:
       - "**.md"
       - "apps/web/**"
       - ".gitattributes"
+      - "vercel.json"
+      - ".vercelignore"
   workflow_dispatch:
 
 permissions:

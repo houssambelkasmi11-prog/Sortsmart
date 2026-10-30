@@ -1,0 +1,2 @@
+# The site only needs the web app; the Rust desktop backend can't build on Vercel.
+apps/desktop/src-tauri
